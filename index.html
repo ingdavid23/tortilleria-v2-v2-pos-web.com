@@ -2,1112 +2,1654 @@
 <html lang="es" class="h-full">
  <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Punto de Venta Multi-Sucursal - Tortillería</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión - Escuela de Inglés</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
 
   <style>
-    * { font-family: 'Nunito', sans-serif; }
-    body { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    
-    .product-card:hover { transform: translateY(-2px); }
-    .btn-action:active { transform: scale(0.95); }
-    
-    @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-slide { animation: slideIn 0.3s ease-out; }
-    
-    .ticket-print { font-family: 'Courier New', monospace; white-space: pre-wrap; }
-    
-    @media print {
-      body * { visibility: hidden; }
-      #ticket-modal, #ticket-modal * { visibility: visible; }
-      #ticket-modal { position: absolute; left: 0; top: 0; width: 100%; }
-    }
-    
-    /* Scrollbars elegantes para PC y ocultos en móvil para el menú */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    * { font-family: 'Poppins', sans-serif; }
+    .sidebar-item { transition: all 0.2s ease; }
+    .sidebar-item:hover { transform: translateX(4px); }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .btn-primary { background: linear-gradient(135deg, #1B396A 0%, #005A9C 100%); }
+    .btn-primary:hover { background: linear-gradient(135deg, #132A50 0%, #00457A 100%); }
+    .gradient-bg { background: linear-gradient(135deg, #1B396A 0%, #005A9C 100%); }
+    .toast { animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
   </style>
+  <style>body { box-sizing: border-box; }</style>
  </head>
- <body class="h-full bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 overflow-hidden">
-
-  <div id="loading-screen" class="fixed inset-0 bg-white z-[200] flex flex-col items-center justify-center">
-    <div class="text-6xl mb-4 animate-bounce">🌽</div>
-    <h2 class="text-xl sm:text-2xl font-bold text-amber-600">Conectando a la nube...</h2>
-  </div>
-
-  <div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-amber-500 to-orange-600 z-[100] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8 animate-slide">
-      <div class="text-center mb-6 sm:mb-8">
-        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-100 rounded-full flex items-center justify-center text-3xl sm:text-4xl mx-auto mb-3 sm:mb-4">🌽</div>
-        <h2 class="text-xl sm:text-2xl font-bold text-gray-800">El Maíz Dorado</h2>
-        <p class="text-sm sm:text-base text-gray-500">Sistema Multi-Sucursal</p>
-      </div>
-      <form onsubmit="handleLogin(event)" class="space-y-4 sm:space-y-5">
-        <div>
-          <label class="text-xs sm:text-sm font-semibold text-gray-600">Usuario</label>
-          <input type="text" id="login-username" required class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 mt-1 text-sm sm:text-base focus:border-amber-500 focus:outline-none" placeholder="Ej: sucursal uno">
-        </div>
-        <div>
-          <label class="text-xs sm:text-sm font-semibold text-gray-600">Contraseña</label>
-          <input type="password" id="login-password" required class="w-full border-2 border-gray-200 rounded-xl px-4 py-3 mt-1 text-sm sm:text-base focus:border-amber-500 focus:outline-none" placeholder="••••••••">
-        </div>
-        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 sm:py-4 rounded-xl transition-all shadow-lg hover:shadow-xl mt-2 text-sm sm:text-base">
-          Ingresar al Sistema
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <div id="app" class="h-full overflow-auto flex flex-col hidden">
-   <header class="bg-gradient-to-r from-amber-600 to-orange-500 text-white shadow-lg shrink-0">
-    <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4">
-     <div class="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
-      
-      <div class="flex items-center gap-3 w-full sm:w-auto justify-center sm:justify-start">
-       <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center text-xl sm:text-2xl shrink-0">🌽</div>
-       <div class="text-center sm:text-left">
-        <h1 id="business-title" class="text-lg sm:text-2xl font-bold leading-tight">Tortillería El Maíz Dorado</h1>
-        <p id="branch-title" class="text-amber-100 text-xs sm:text-sm font-semibold tracking-wide">Cargando sucursal...</p>
-       </div>
-      </div>
-      
-      <div class="flex flex-row items-center justify-between w-full sm:w-auto gap-4 bg-black/10 sm:bg-transparent px-4 py-2 sm:p-0 rounded-xl sm:rounded-none">
-       <div class="text-left sm:text-right">
-        <p id="current-date" class="text-amber-100 text-[10px] sm:text-sm capitalize"></p>
-        <p id="current-time" class="text-sm sm:text-xl font-bold"></p>
-       </div>
-       <div class="border-l border-white/30 pl-4 flex flex-col items-end shrink-0">
-         <span id="display-username" class="font-bold text-xs sm:text-sm bg-white/20 px-3 py-1 rounded-full mb-1">Usuario</span>
-         <button onclick="logout()" class="text-[10px] sm:text-xs text-amber-100 hover:text-white underline">Cerrar sesión</button>
-       </div>
-      </div>
-
+ <body class="h-full bg-gray-100"><div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div><div id="login-screen" class="h-full flex items-center justify-center gradient-bg">
+   <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 fade-in">
+    <div class="text-center mb-8">
+     <div class="w-20 h-20 mx-auto mb-4 rounded-full gradient-bg flex items-center justify-center">
+      <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+      </svg>
      </div>
+     <h1 id="login-title" class="text-2xl font-bold text-gray-800">Centro de Idiomas</h1>
+     <p class="text-gray-500 mt-2">Sistema de Gestión Escolar en la Nube</p>
     </div>
-   </header>
-
-   <div class="bg-white shadow-md border-b-2 sm:border-b-4 border-amber-500 sticky top-0 z-40 shrink-0">
-    <div class="max-w-7xl mx-auto px-2 sm:px-4">
-     <div class="flex gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1 sm:py-0">
-        <button onclick="switchTab('punto-venta')" class="tab-btn active px-4 py-3 sm:px-6 sm:py-4 font-bold text-center whitespace-nowrap border-b-2 sm:border-b-4 border-amber-500 text-amber-600 text-sm sm:text-base hover:bg-amber-50 transition-all"> 🛒 Punto de Venta </button> 
-        <button onclick="switchTab('reporte-diario')" class="tab-btn px-4 py-3 sm:px-6 sm:py-4 font-bold text-center whitespace-nowrap border-b-2 sm:border-b-4 border-transparent text-gray-600 text-sm sm:text-base hover:bg-gray-50 transition-all"> 📊 Diario </button> 
-        <button onclick="switchTab('reporte-semanal')" class="tab-btn px-4 py-3 sm:px-6 sm:py-4 font-bold text-center whitespace-nowrap border-b-2 sm:border-b-4 border-transparent text-gray-600 text-sm sm:text-base hover:bg-gray-50 transition-all"> 📈 Semanal </button> 
-        <button onclick="switchTab('estadisticas')" class="tab-btn px-4 py-3 sm:px-6 sm:py-4 font-bold text-center whitespace-nowrap border-b-2 sm:border-b-4 border-transparent text-gray-600 text-sm sm:text-base hover:bg-gray-50 transition-all"> 📉 Estadísticas </button>
-        <button id="tab-btn-usuarios" onclick="switchTab('usuarios')" class="tab-btn px-4 py-3 sm:px-6 sm:py-4 font-bold text-center whitespace-nowrap border-b-2 sm:border-b-4 border-transparent text-gray-600 text-sm sm:text-base hover:bg-gray-50 transition-all hidden"> 👥 Usuarios </button>
+    <form id="login-form" class="space-y-6">
+     <div><label class="block text-sm font-medium text-gray-700 mb-2">Usuario / Nombre / No. Control</label> <input type="text" id="login-user" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-800 focus:border-transparent transition" placeholder="Ingresa tu usuario">
      </div>
-    </div>
-   </div>
-   
-   <main class="flex-1 overflow-x-hidden overflow-y-auto max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6">
+     <div><label class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label> <input type="password" id="login-pass" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-800 focus:border-transparent transition" placeholder="Ingresa tu contraseña">
+     </div>
+     <div id="login-error" class="hidden text-red-500 text-sm text-center bg-red-50 p-3 rounded-lg"></div>
+     <button type="submit" id="btn-login" class="w-full btn-primary text-white py-3 rounded-lg font-semibold hover:shadow-lg transition"> Iniciar Sesión </button>
+    </form>
     
-    <div id="tab-punto-venta" class="tab-content active">
-     <div class="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="mt-6 text-center text-xs text-gray-400 border-t pt-4">
+      <p><strong>Admin:</strong> admin / admin</p>
+      <p><strong>Maestro:</strong> Nombre Completo / Contraseña asignada</p>
+      <p><strong>Alumno:</strong> No. Control / Contraseña asignada</p>
+    </div>
+
+   </div>
+  </div><div id="dashboard" class="hidden h-full flex w-full relative overflow-hidden">
+    
+    <div class="md:hidden gradient-bg text-white flex items-center justify-between p-4 fixed top-0 w-full z-20 shadow-md">
+      <div class="font-bold text-lg truncate flex items-center gap-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        Centro de Idiomas
+      </div>
+      <button onclick="toggleMobileMenu()" class="p-1 focus:outline-none rounded hover:bg-white/20 transition">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </div>
+
+    <div id="mobile-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden transition-opacity opacity-0"></div>
+
+    <aside id="sidebar" class="w-64 gradient-bg text-white flex flex-col fixed md:relative z-40 h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300 shadow-2xl md:shadow-none">
+    <div class="p-6 border-b border-white/20 mt-14 md:mt-0"> <h2 id="sidebar-title" class="text-xl font-bold truncate">Centro de Idiomas</h2>
+     <p id="sidebar-role" class="text-blue-200 text-xs font-semibold mt-1 tracking-wider uppercase">ADMINISTRADOR</p>
+    </div>
+    <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+      <button id="nav-alumnos" onclick="showSection('alumnos')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="alumnos">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> Registrar Alumnos </button> 
       
-      <div id="pos-left-panel" class="lg:col-span-2 flex flex-col gap-4 sm:gap-6 order-2 lg:order-1">
+      <button id="nav-maestros" onclick="showSection('maestros')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="maestros">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Registrar Maestros </button> 
+      
+      <button id="nav-grupos" onclick="showSection('grupos')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="grupos">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg> Gestionar Grupos </button> 
+      
+      <button id="nav-listas" onclick="showSection('listas')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="listas">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Generar Listas </button> 
+      
+      <button id="nav-calificaciones" onclick="showSection('calificaciones')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="calificaciones">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg> Calificaciones </button>
+      
+      <button id="nav-historial" onclick="showSection('historial')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left" data-section="historial">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Historial </button>
+
+      <button id="nav-mis-calificaciones" onclick="showSection('mis-calificaciones')" class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left hidden" data-section="mis-calificaciones">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg> Mi Historial </button>
+
+    </nav>
+    <div class="p-4 border-t border-white/20"><button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-white/10 text-left">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+      </svg> Cerrar Sesión </button>
+    </div>
+   </aside>
+   
+   <main class="flex-1 overflow-auto p-4 md:p-8 pt-20 md:pt-8 w-full bg-gray-100">
        
-       <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-         <h2 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2"><span class="text-xl sm:text-2xl">📦</span> Productos</h2>
-         <button id="btn-new-product" onclick="openProductModal()" class="btn-action bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center justify-center gap-2"> <span>➕</span> Nuevo </button>
-        </div>
-        <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"></div>
-       </section>
-       
-       <section id="quick-sale-section" class="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl shadow-xl p-4 sm:p-6 text-white">
-        <h2 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2"><span class="text-xl sm:text-2xl">💵</span> Venta Rápida</h2>
-        
-        <div class="mb-4">
-            <label class="text-xs sm:text-sm font-semibold opacity-90 mb-1 block">Producto:</label>
-            <select id="quick-sale-product" onchange="updateQuickSaleButtons()" class="w-full bg-white/20 backdrop-blur text-white border-2 border-white/30 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base focus:border-white focus:outline-none cursor-pointer">
-                </select>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-            <button onclick="quickSaleByMoney(5)" class="btn-action bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl p-3 sm:p-4 text-center transition-all"> <p class="text-xl sm:text-2xl font-bold">$5</p><p id="quick-5" class="text-xs sm:text-sm opacity-80">0g</p></button> 
-            <button onclick="quickSaleByMoney(10)" class="btn-action bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl p-3 sm:p-4 text-center transition-all"> <p class="text-xl sm:text-2xl font-bold">$10</p><p id="quick-10" class="text-xs sm:text-sm opacity-80">0g</p></button> 
-            <button onclick="quickSaleByMoney(20)" class="btn-action bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl p-3 sm:p-4 text-center transition-all"> <p class="text-xl sm:text-2xl font-bold">$20</p><p id="quick-20" class="text-xs sm:text-sm opacity-80">0g</p></button> 
-            <button onclick="quickSaleByMoney(50)" class="btn-action bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl p-3 sm:p-4 text-center transition-all"> <p class="text-xl sm:text-2xl font-bold">$50</p><p id="quick-50" class="text-xs sm:text-sm opacity-80">0g</p></button>
-        </div>
-        <div class="mt-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <input type="number" id="custom-money" placeholder="Cantidad personalizada" class="flex-1 bg-white/20 backdrop-blur rounded-xl px-4 py-3 placeholder-white/60 text-white border-2 border-white/30 focus:border-white focus:outline-none text-sm sm:text-base"> 
-            <button onclick="quickSaleCustomMoney()" class="btn-action bg-white text-green-600 px-6 py-3 rounded-xl font-bold hover:bg-green-50 transition-all text-sm sm:text-base"> Agregar </button>
-        </div>
-       </section>
-
-       <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-         <h2 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2"><span class="text-xl sm:text-2xl">📊</span> Ventas Día (<span id="history-branch-name" class="truncate max-w-[120px] sm:max-w-none inline-block"></span>)</h2>
-         <button id="btn-clear-history" onclick="clearDailySales()" class="text-red-500 hover:text-red-600 text-xs sm:text-sm font-semibold self-end sm:self-auto"> Limpiar todo </button>
-        </div>
-        <div id="sales-history" class="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto pr-1 sm:pr-2"></div>
-        <div class="mt-4 pt-4 border-t-2 border-gray-100 flex justify-between items-center"><span class="text-sm sm:text-base text-gray-600 font-semibold">Total del día:</span> <span id="daily-total" class="text-xl sm:text-2xl font-bold text-green-600">$0.00</span>
-        </div>
-       </section>
+    <div id="stats-header" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+     <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+      <div class="flex items-center gap-4">
+       <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+       </div>
+       <div>
+        <p class="text-gray-500 text-sm">Mis Alumnos</p>
+        <p id="stat-alumnos" class="text-2xl font-bold text-gray-800">0</p>
+       </div>
       </div>
+     </div>
+     <div class="bg-white rounded-xl p-6 shadow-sm card-hover" id="stat-card-maestros">
+      <div class="flex items-center gap-4">
+       <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+        </svg>
+       </div>
+       <div>
+        <p class="text-gray-500 text-sm">Total Maestros</p>
+        <p id="stat-maestros" class="text-2xl font-bold text-gray-800">0</p>
+       </div>
+      </div>
+     </div>
+     <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+      <div class="flex items-center gap-4">
+       <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+       </div>
+       <div>
+        <p class="text-gray-500 text-sm">Mis Grupos Activos</p>
+        <p id="stat-grupos" class="text-2xl font-bold text-gray-800">0</p>
+       </div>
+      </div>
+     </div>
+     <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+      <div class="flex items-center gap-4">
+       <div class="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+        </svg>
+       </div>
+       <div>
+        <p class="text-gray-500 text-sm">Módulos</p>
+        <p id="stat-modulos" class="text-2xl font-bold text-gray-800">5</p>
+       </div>
+      </div>
+     </div>
+    </div>
 
-      <div id="pos-right-panel" class="w-full flex flex-col order-1 lg:order-2">
-       <section class="bg-white rounded-2xl shadow-xl overflow-hidden sticky top-4">
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 sm:p-4">
-         <h2 class="text-lg sm:text-xl font-bold flex items-center gap-2"><span class="text-xl sm:text-2xl">🛒</span> Venta Actual</h2>
+    <section id="section-mis-calificaciones" class="hidden fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <div class="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+        <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+          <svg class="w-6 h-6 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
         </div>
-        
-        <div id="cart-items" class="p-3 sm:p-4 space-y-2 sm:space-y-3 min-h-[120px] max-h-[250px] sm:max-h-[350px] overflow-y-auto"></div>
-        
-        <div class="p-4 bg-gray-50 border-t">
-         <div class="flex justify-between items-center mb-3 sm:mb-4"><span class="text-sm sm:text-base text-gray-600 font-semibold">Subtotal:</span> <span id="cart-subtotal" class="text-lg sm:text-xl font-bold text-gray-800">$0.00</span></div>
-         <div class="flex justify-between items-center mb-3 sm:mb-4 text-xl sm:text-2xl"><span class="font-bold text-gray-800">TOTAL:</span> <span id="cart-total" class="font-bold text-blue-600">$0.00</span></div>
-         
-         <div class="space-y-2 sm:space-y-3">
-            <input type="number" id="payment-amount" placeholder="Pago del cliente" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-base sm:text-lg focus:border-blue-500 focus:outline-none" oninput="calculateChange()">
-          <div id="change-display" class="hidden bg-green-100 border-2 border-green-300 rounded-xl p-2 sm:p-3 text-center">
-           <p class="text-xs sm:text-sm text-green-600">Cambio a entregar:</p>
-           <p id="change-amount" class="text-xl sm:text-2xl font-bold text-green-700">$0.00</p>
-          </div>
+        <div>
+          <h3 id="alumno-perfil-nombre" class="text-xl md:text-2xl font-bold text-gray-800">Nombre del Alumno</h3>
+          <p id="alumno-perfil-info" class="text-sm md:text-base text-gray-500">No. Control • Carrera</p>
+        </div>
+      </div>
+      
+      <h4 class="font-semibold text-gray-800 mb-4">Historial de Calificaciones</h4>
+      <div class="overflow-x-auto">
+       <table class="w-full whitespace-nowrap">
+        <thead>
+         <tr class="border-b border-gray-200 bg-gray-50">
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Grupo</th>
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Módulo</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P1</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P2</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P3</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P4</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Promedio</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Estado</th>
+         </tr>
+        </thead>
+        <tbody id="tabla-mis-calificaciones">
+         <tr>
+          <td colspan="8" class="py-8 text-center text-gray-400">Cargando calificaciones...</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </section>
+
+    <section id="section-alumnos" class="fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <h3 id="titulo-form-alumno" class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+       </svg> Registrar Nuevo Alumno</h3>
+      <form id="form-alumno" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Nombre Completo *</label> <input type="text" id="alumno-nombre" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nombre completo del alumno">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Número de Control *</label> <input type="text" id="alumno-control" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ej: 20230001">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Carrera *</label> <select id="alumno-carrera" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <option value="">Selecciona una carrera</option> <option value="Ingeniería en Sistemas">Ingeniería en Sistemas</option> <option value="Ingeniería Industrial">Ingeniería Industrial</option> <option value="Ingeniería Civil">Ingeniería Civil</option> <option value="Ingeniería Mecánica">Ingeniería Mecánica</option> <option value="Ingeniería Electrónica">Ingeniería Electrónica</option> <option value="Administración">Administración</option> <option value="Contaduría">Contaduría</option> <option value="Arquitectura">Arquitectura</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Modalidad *</label> <select id="alumno-modalidad" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <option value="">Selecciona modalidad</option> <option value="Escolarizado">Escolarizado</option> <option value="Mixto">Mixto</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Teléfono (WhatsApp) *</label> <input type="tel" id="alumno-telefono" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Ej: 9631234567 (10 dígitos)">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Módulo de Inglés *</label> <select id="alumno-modulo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <option value="">Selecciona módulo</option> <option value="1-2">Módulo 1-2</option> <option value="3-4">Módulo 3-4</option> <option value="5-6">Módulo 5-6</option> <option value="7-8">Módulo 7-8</option> <option value="9-10">Módulo 9-10</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Contraseña de Acceso *</label> <input type="text" id="alumno-password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contraseña para el portal del alumno">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Asignar a Grupo Activo *</label> <select id="alumno-grupo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <option value="">Selecciona un grupo</option> </select>
+       </div>
+       <div class="md:col-span-2 flex flex-col sm:flex-row gap-4">
+        <button type="submit" id="btn-registrar-alumno" class="btn-primary text-white w-full sm:w-auto px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex justify-center items-center gap-2">
+         <svg id="icono-btn-alumno" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+         </svg> <span id="texto-btn-alumno">Registrar Alumno</span>
+        </button>
+        <button type="button" id="btn-cancelar-edicion-alumno" onclick="cancelarEdicionAlumno()" class="hidden w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition">
+         Cancelar Edición
+        </button>
+       </div>
+      </form>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6">Alumnos Registrados / Reinscripciones</h3>
+      <div class="overflow-x-auto">
+       <table class="w-full whitespace-nowrap">
+        <thead>
+         <tr class="border-b border-gray-200">
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Nombre</th>
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">No. Control</th>
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Carrera</th>
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Módulo</th>
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Grupo / Estado</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Acciones</th>
+         </tr>
+        </thead>
+        <tbody id="tabla-alumnos">
+         <tr>
+          <td colspan="6" class="py-8 text-center text-gray-400">No hay alumnos registrados</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </section><section id="section-maestros" class="hidden fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <h3 id="titulo-form-maestro" class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+       </svg> Registrar Nuevo Maestro</h3>
+      <form id="form-maestro" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Nombre Completo *</label> <input type="text" id="maestro-nombre" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Nombre completo del maestro">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Especialidad/Nivel *</label> <select id="maestro-especialidad" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"> <option value="">Selecciona especialidad</option> <option value="Básico (1-4)">Básico (Módulos 1-4)</option> <option value="Intermedio (5-8)">Intermedio (Módulos 5-8)</option> <option value="Avanzado (9-10)">Avanzado (Módulos 9-10)</option> <option value="Todos los niveles">Todos los niveles</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Contraseña de Acceso *</label> <input type="text" id="maestro-password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Asigna una contraseña (ej. pass123)">
+       </div>
+       <div class="md:col-span-2 flex flex-col sm:flex-row gap-4">
+         <button type="submit" id="btn-registrar-maestro" class="bg-blue-600 w-full sm:w-auto justify-center hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center gap-2">
+           <svg id="icono-btn-maestro" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+           </svg> <span id="texto-btn-maestro">Registrar Maestro</span>
+         </button>
+         <button type="button" id="btn-cancelar-edicion-maestro" onclick="cancelarEdicionMaestro()" class="hidden w-full sm:w-auto bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition">
+           Cancelar Edición
+         </button>
+       </div>
+      </form>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">Maestros Registrados</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-maestros">
+       <div class="text-center text-gray-400 py-8 col-span-full">
+        No hay maestros registrados
+       </div>
+      </div>
+     </div>
+    </section><section id="section-grupos" class="hidden fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+       </svg> Crear Nuevo Grupo</h3>
+      <form id="form-grupo" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Grupo *</label> <input type="text" id="grupo-nombre" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Grupo A">
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Módulo *</label> <select id="grupo-modulo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"> <option value="">Selecciona módulo</option> <option value="1-2">Módulo 1-2</option> <option value="3-4">Módulo 3-4</option> <option value="5-6">Módulo 5-6</option> <option value="7-8">Módulo 7-8</option> <option value="9-10">Módulo 9-10</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Maestro Asignado</label> <select id="grupo-maestro" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"> <option value="">Sin asignar</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Periodo Escolar *</label> <input type="text" id="grupo-periodo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Ej: Ene-Jun 2026">
+       </div>
+       <div class="md:col-span-2"><button type="submit" id="btn-crear-grupo" class="bg-green-600 w-full sm:w-auto justify-center hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center gap-2">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+         </svg> Crear Grupo </button>
+       </div>
+      </form>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">Grupos Activos</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-grupos">
+       <div class="text-center text-gray-400 py-8 col-span-full">
+        No hay grupos creados
+       </div>
+      </div>
+     </div>
+    </section><section id="section-listas" class="hidden fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg> Generar Listas de Alumnos</h3>
+      <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Grupo Activo</label> <select id="lista-grupo-select" class="w-full md:w-1/2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"> <option value="">Selecciona un grupo</option> </select>
+      </div>
+      <div id="lista-preview" class="hidden">
+       <div class="border border-gray-200 rounded-lg p-4 md:p-6 mb-4 bg-gray-50">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+         <div>
+          <h4 id="lista-grupo-titulo" class="text-lg font-bold text-gray-800"></h4>
+          <p id="lista-grupo-info" class="text-sm text-gray-500"></p>
          </div>
-         <div class="grid grid-cols-2 gap-2 sm:gap-3 mt-3 sm:mt-4">
-            <button onclick="clearCart()" class="btn-action bg-red-100 hover:bg-red-200 text-red-600 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-1"> 🗑️ <span class="hidden sm:inline">Limpiar</span> </button> 
-            <button onclick="generateTicket()" class="btn-action bg-purple-500 hover:bg-purple-600 text-white py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-1"> 🎫 <span class="hidden sm:inline">Ticket</span> </button>
+         <div class="flex gap-2 w-full sm:w-auto">
+           <button onclick="descargarListaExcel()" class="flex-1 sm:flex-none justify-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 
+            Excel
+           </button>
+           <button onclick="descargarListaPDF()" class="flex-1 sm:flex-none justify-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 
+            PDF
+           </button>
          </div>
-         <button onclick="completeSale()" class="btn-action w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-all mt-3 shadow-md"> ✅ Completar Venta </button>
         </div>
-       </section>
-      </div>
-      
-     </div>
-    </div>
-
-    <div id="tab-reporte-diario" class="tab-content hidden">
-     <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-       <h2 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2"><span class="text-2xl sm:text-3xl">📊</span> Reporte Diario</h2>
-       <div class="flex gap-2">
-        <button onclick="copyDailyReport()" class="w-full sm:w-auto btn-action bg-blue-500 hover:bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center justify-center gap-2"> <span>📋</span> Copiar </button> 
-       </div>
-      </div>
-      <div id="daily-report-container" class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-3 sm:p-6 text-xs sm:text-sm font-mono whitespace-pre-wrap mb-4 overflow-x-auto" style="max-height: 60vh; line-height: 1.5;"></div>
-     </section>
-    </div>
-
-    <div id="tab-reporte-semanal" class="tab-content hidden">
-     <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-       <h2 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2"><span class="text-2xl sm:text-3xl">📈</span> Reporte Semanal</h2>
-       <div class="flex gap-2">
-        <button onclick="copyWeeklyReport()" class="w-full sm:w-auto btn-action bg-blue-500 hover:bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center justify-center gap-2"> <span>📋</span> Copiar </button> 
-       </div>
-      </div>
-      <div id="weekly-report-container" class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-3 sm:p-6 text-xs sm:text-sm font-mono whitespace-pre-wrap mb-4 overflow-x-auto" style="max-height: 60vh; line-height: 1.5;"></div>
-     </section>
-    </div>
-
-    <div id="tab-estadisticas" class="tab-content hidden">
-     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-       <h2 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2 leading-tight">
-         <span class="text-2xl sm:text-3xl">📉</span> <span id="stats-title">Estadísticas</span>
-       </h2>
-       <button id="btn-refresh-stats" onclick="refreshAdminData()" class="btn-action bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 sm:px-6 py-2 rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center justify-center gap-2 hidden shadow-sm"> 
-         <span>🔄</span> Actualizar Datos 
-       </button>
-     </div>
-
-     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-      <section class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-4 sm:p-6 text-white">
-       <h3 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2"><span class="text-xl sm:text-2xl">📅</span> Hoy</h3>
-       <div class="space-y-3 sm:space-y-4 text-sm sm:text-base">
-        <div class="flex justify-between items-center border-b border-blue-400 pb-2 sm:pb-3"><span class="text-blue-100">Ventas:</span> <span id="stat-daily-total" class="text-xl sm:text-2xl font-bold">$0.00</span></div>
-        <div class="flex justify-between items-center border-b border-blue-400 pb-2 sm:pb-3"><span class="text-blue-100">Tickets:</span> <span id="stat-daily-transactions" class="text-xl sm:text-2xl font-bold">0</span></div>
-        <div class="flex justify-between items-center border-b border-blue-400 pb-2 sm:pb-3"><span class="text-blue-100">Promedio:</span> <span id="stat-daily-average" class="text-xl sm:text-2xl font-bold">$0.00</span></div>
-        <div class="flex justify-between items-center"><span class="text-blue-100">Top producto:</span> <span id="stat-daily-best" class="text-base sm:text-xl font-bold truncate ml-2 text-right">-</span></div>
-       </div>
-      </section>
-      
-      <section class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-4 sm:p-6 text-white">
-       <h3 class="text-lg sm:text-xl font-bold mb-3 sm:mb-4 flex items-center gap-2"><span class="text-xl sm:text-2xl">📊</span> Semana</h3>
-       <div class="space-y-3 sm:space-y-4 text-sm sm:text-base">
-        <div class="flex justify-between items-center border-b border-purple-400 pb-2 sm:pb-3"><span class="text-purple-100">Ingreso:</span> <span id="stat-weekly-total" class="text-xl sm:text-2xl font-bold">$0.00</span></div>
-        <div class="flex justify-between items-center border-b border-purple-400 pb-2 sm:pb-3"><span class="text-purple-100">Tickets:</span> <span id="stat-weekly-transactions" class="text-xl sm:text-2xl font-bold">0</span></div>
-        <div class="flex justify-between items-center border-b border-purple-400 pb-2 sm:pb-3"><span class="text-purple-100">Prom. diario:</span> <span id="stat-weekly-daily-avg" class="text-xl sm:text-2xl font-bold">$0.00</span></div>
-        <div class="flex justify-between items-center"><span class="text-purple-100">Ticket prom:</span> <span id="stat-weekly-avg" class="text-xl sm:text-2xl font-bold">$0.00</span></div>
-       </div>
-      </section>
-     </div>
-
-     <div id="admin-branches-stats" class="hidden mb-4 sm:mb-6">
-        <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2"><span class="text-xl sm:text-2xl">🏢</span> Por Sucursal (Hoy)</h3>
-        <div id="branches-stats-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"></div>
-     </div>
-
-     <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-      <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">📈 Últimos 7 días</h3>
-      <div id="weekly-chart" class="flex items-end justify-around gap-1 sm:gap-2 md:gap-4 h-48 sm:h-64 bg-gray-50 rounded-xl p-2 sm:p-4 overflow-hidden"></div>
-     </section>
-    </div>
-
-    <div id="tab-usuarios" class="tab-content hidden">
-     <section class="bg-white rounded-2xl shadow-xl p-4 sm:p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-       <h2 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2"><span class="text-2xl sm:text-3xl">👥</span> Empleados</h2>
-       <button onclick="openUserModal()" class="w-full sm:w-auto btn-action bg-blue-500 hover:bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center justify-center gap-2"> <span>➕</span> Nuevo Usuario </button>
-      </div>
-      
-      <div class="overflow-x-auto no-scrollbar rounded-xl border border-gray-200">
-        <table class="w-full text-left border-collapse min-w-[600px]">
-          <thead>
-            <tr class="bg-gray-100 text-gray-600 border-b-2 border-gray-200 text-sm">
-              <th class="p-3 sm:p-4 font-bold rounded-tl-xl">Usuario</th>
-              <th class="p-3 sm:p-4 font-bold">Sucursal Asignada</th>
-              <th class="p-3 sm:p-4 font-bold">Contraseña</th>
-              <th class="p-3 sm:p-4 font-bold">Rol</th>
-              <th class="p-3 sm:p-4 font-bold rounded-tr-xl text-right">Acciones</th>
+        <div class="overflow-x-auto">
+          <table class="w-full whitespace-nowrap">
+           <thead>
+            <tr class="border-b border-gray-300">
+             <th class="text-left py-2 px-3 text-sm font-semibold text-gray-600">#</th>
+             <th class="text-left py-2 px-3 text-sm font-semibold text-gray-600">Nombre</th>
+             <th class="text-left py-2 px-3 text-sm font-semibold text-gray-600">No. Control</th>
+             <th class="text-left py-2 px-3 text-sm font-semibold text-gray-600">Carrera</th>
+             <th class="text-left py-2 px-3 text-sm font-semibold text-gray-600">Modalidad</th>
             </tr>
-          </thead>
-          <tbody id="users-table-body" class="text-sm sm:text-base"></tbody>
-        </table>
+           </thead>
+           <tbody id="lista-alumnos-body">
+           </tbody>
+          </table>
+        </div>
+       </div>
       </div>
-     </section>
-    </div>
+      <div id="lista-empty" class="text-center text-gray-400 py-8">
+       Selecciona un grupo para ver la lista de alumnos
+      </div>
+     </div>
+    </section><section id="section-calificaciones" class="hidden fade-in">
+     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
+      <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+       <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+         </svg>
+        </div>
+        <div>
+         <p class="text-gray-500 text-sm">Índice de Aprobación</p>
+         <p id="stat-aprobacion" class="text-2xl font-bold text-green-600">0%</p>
+        </div>
+       </div>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+       <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
+         <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m8-8l2 2m0 0l2 2m-2-2l-2-2m2 2l2-2"></path>
+         </svg>
+        </div>
+        <div>
+         <p class="text-gray-500 text-sm">Índice de Reprobación</p>
+         <p id="stat-reprobacion" class="text-2xl font-bold text-red-600">0%</p>
+        </div>
+       </div>
+      </div>
+      <div class="bg-white rounded-xl p-6 shadow-sm card-hover">
+       <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+         <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+         </svg>
+        </div>
+        <div>
+         <p class="text-gray-500 text-sm">Promedio General del Grupo</p>
+         <p id="stat-promedio-grupo" class="text-2xl font-bold text-blue-600">0.0</p>
+        </div>
+       </div>
+      </div>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6" id="card-captura-calificaciones">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg> Capturar Calificaciones</h3>
+      <form id="form-calificaciones" class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Grupo Activo *</label> <select id="calif-grupo" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"> <option value="">Selecciona un grupo</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Alumno *</label> <select id="calif-alumno" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"> <option value="">Primero selecciona un grupo</option> </select>
+       </div>
+       <div class="bg-indigo-50 rounded-lg p-4 md:col-span-2 border border-indigo-200">
+        <h4 class="font-semibold text-indigo-900 mb-3">Ingresa los 4 Parciales</h4>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+         <div><label class="block text-xs font-medium text-gray-700 mb-1">Parcial 1 *</label> <input type="number" id="calif-parcial1" min="0" max="100" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-center" placeholder="0-100">
+         </div>
+         <div><label class="block text-xs font-medium text-gray-700 mb-1">Parcial 2 *</label> <input type="number" id="calif-parcial2" min="0" max="100" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-center" placeholder="0-100">
+         </div>
+         <div><label class="block text-xs font-medium text-gray-700 mb-1">Parcial 3 *</label> <input type="number" id="calif-parcial3" min="0" max="100" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-center" placeholder="0-100">
+         </div>
+         <div><label class="block text-xs font-medium text-gray-700 mb-1">Parcial 4 *</label> <input type="number" id="calif-parcial4" min="0" max="100" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-center" placeholder="0-100">
+         </div>
+        </div>
+       </div>
+       <div class="md:col-span-2 flex flex-col sm:flex-row gap-4">
+         <button type="submit" id="btn-guardar-calificacion" class="bg-indigo-600 w-full sm:w-auto justify-center hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center gap-2">
+         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+         </svg> Guardar </button> 
+         <button type="button" onclick="limpiarFormularioCalificaciones()" class="bg-gray-300 w-full sm:w-auto hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition"> Limpiar </button>
+       </div>
+      </form>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">Calificaciones por Grupo Activo</h3>
+      <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Grupo para Ver Calificaciones</label> <select id="calif-grupo-view" class="w-full md:w-1/2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"> <option value="">Selecciona un grupo</option> </select>
+      </div>
+      <div class="overflow-x-auto">
+       <table class="w-full whitespace-nowrap">
+        <thead>
+         <tr class="border-b border-gray-200 bg-gray-50">
+          <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Alumno</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P1</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P2</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P3</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P4</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Promedio</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Estado</th>
+          <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600" id="th-acciones-calif">Acciones</th>
+         </tr>
+        </thead>
+        <tbody id="tabla-calificaciones">
+         <tr>
+          <td colspan="8" class="py-8 text-center text-gray-400">Selecciona un grupo para ver las calificaciones</td>
+         </tr>
+        </tbody>
+       </table>
+      </div>
+     </div><div class="bg-white rounded-xl shadow-sm p-4 md:p-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6">Generar Boleta Oficial</h3>
+      <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Grupo</label> <select id="boleta-grupo-select" class="w-full md:w-1/2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"> <option value="">Selecciona un grupo</option> </select>
+      </div>
+      <button onclick="descargarBoletaPDFReal('activo')" class="bg-red-600 w-full sm:w-auto justify-center hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition flex items-center gap-2">
+       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg> Descargar PDF </button>
+     </div>
+    </section>
+
+    <section id="section-historial" class="hidden fade-in">
+     <div class="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6">
+      <h3 class="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+       <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+       </svg> Historial de Grupos Cerrados</h3>
+      <div class="mb-6">
+       <label class="block text-sm font-medium text-gray-700 mb-2">Selecciona un Grupo Cerrado</label>
+       <select id="historial-grupo-select" class="w-full md:w-1/2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent">
+        <option value="">Selecciona un grupo</option>
+       </select>
+      </div>
+      
+      <div id="historial-content" class="hidden">
+       <div class="border border-gray-200 rounded-lg p-4 md:p-6 mb-4 bg-gray-50">
+        
+        <div class="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+         <div>
+          <h4 id="historial-grupo-titulo" class="text-lg font-bold text-gray-800"></h4>
+          <p id="historial-grupo-info" class="text-sm text-gray-500"></p>
+         </div>
+         <div class="flex gap-2 w-full sm:w-auto">
+           <button onclick="descargarBoletaPDFReal('historial')" class="flex-1 sm:flex-none justify-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> 
+            PDF
+           </button>
+           <button id="btn-reabrir-grupo" class="hidden flex-1 sm:flex-none justify-center bg-green-100 text-green-700 hover:bg-green-200 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> 
+            Reabrir
+           </button>
+         </div>
+        </div>
+
+        <div class="overflow-x-auto">
+         <table class="w-full whitespace-nowrap">
+          <thead>
+           <tr class="border-b border-gray-300 bg-gray-100">
+            <th class="text-left py-3 px-4 text-sm font-semibold text-gray-600">Nombre del Alumno</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P1</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P2</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P3</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">P4</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Promedio</th>
+            <th class="text-center py-3 px-4 text-sm font-semibold text-gray-600">Estado</th>
+           </tr>
+          </thead>
+          <tbody id="historial-alumnos-body">
+          </tbody>
+         </table>
+        </div>
+       </div>
+      </div>
+      <div id="historial-empty" class="text-center text-gray-400 py-8">
+       Selecciona un grupo cerrado para ver su historial
+      </div>
+     </div>
+    </section>
 
    </main>
   </div>
-
-  <div id="product-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide">
-        <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-3 sm:p-4 rounded-t-2xl"><h3 id="modal-title" class="text-lg sm:text-xl font-bold">Nuevo Producto</h3></div>
-        <form id="product-form" class="p-4 sm:p-6 space-y-3 sm:space-y-4" onsubmit="saveProduct(event)">
-         <input type="hidden" id="product-id">
-         <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Nombre</label> <input type="text" id="product-name" required class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-amber-500 focus:outline-none"></div>
-         <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Precio por Kg</label> <input type="number" step="0.01" id="product-price" required class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-amber-500 focus:outline-none"></div>
-         <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Emoji/Ícono</label> <input type="text" id="product-emoji" maxlength="2" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 focus:border-amber-500 focus:outline-none text-xl sm:text-2xl text-center" value="🫓"></div>
-         <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Color de tarjeta</label> 
-          <select id="product-color" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-amber-500 focus:outline-none bg-white"> 
-           <option value="amber">Ámbar</option> <option value="yellow">Amarillo</option> <option value="orange">Naranja</option> <option value="blue">Azul</option> <option value="green">Verde</option> <option value="red">Rojo</option> <option value="purple">Morado</option> 
-          </select>
-         </div>
-         <div class="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
-          <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Cancelar </button> 
-          <button type="submit" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Guardar </button>
-         </div>
-        </form>
-       </div>
+  
+  <div id="confirm-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+   <div class="bg-white rounded-xl p-6 max-w-sm md:max-w-md w-full mx-4 fade-in">
+    <h3 id="confirm-modal-title" class="text-lg font-bold text-gray-800 mb-2">Confirmar Acción</h3>
+    <p id="confirm-modal-text" class="text-gray-600 mb-6">¿Estás seguro?</p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-end">
+     <button onclick="closeConfirmModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition w-full sm:w-auto">Cancelar</button> 
+     <button id="confirm-action-btn" class="px-4 py-2 text-white rounded-lg transition w-full sm:w-auto">Confirmar</button>
+    </div>
+   </div>
   </div>
 
-  <div id="user-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-slide">
-     <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-3 sm:p-4 rounded-t-2xl"><h3 id="user-modal-title" class="text-lg sm:text-xl font-bold">Nuevo Usuario</h3></div>
-     <form id="user-form" class="p-4 sm:p-6 space-y-3 sm:space-y-4" onsubmit="saveUser(event)">
-      <input type="hidden" id="user-id">
-      <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Nombre de Usuario</label> <input type="text" id="user-username" required class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-blue-500 focus:outline-none"></div>
-      <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Contraseña</label> <input type="text" id="user-password" required class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-blue-500 focus:outline-none"></div>
-      <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Sucursal a la que pertenece</label> 
-        <input type="text" id="user-branch-input" placeholder="Ej: Sucursal Centro" required class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-blue-500 focus:outline-none">
-       </div>
-      <div><label class="text-xs sm:text-sm text-gray-600 font-semibold">Rol de sistema</label> 
-       <select id="user-role" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-2 mt-1 text-sm sm:text-base focus:border-blue-500 focus:outline-none bg-white"> 
-        <option value="empleado">Empleado (Cajero)</option> 
-        <option value="admin">Administrador (Total)</option> 
-       </select>
+  <div id="whatsapp-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+   <div class="bg-white rounded-xl p-6 max-w-sm md:max-w-md w-full mx-4 fade-in">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
       </div>
-      <div class="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
-       <button type="button" onclick="closeUserModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Cancelar </button> 
-       <button type="submit" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Guardar </button>
-      </div>
-     </form>
+      <h3 class="text-lg font-bold text-gray-800">Enviar Mensaje</h3>
     </div>
-  </div>
-
-  <div id="quantity-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide">
-        <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white p-3 sm:p-4 rounded-t-2xl"><h3 id="quantity-modal-title" class="text-lg sm:text-xl font-bold">Agregar al Carrito</h3></div>
-        <div class="p-4 sm:p-6 space-y-3 sm:space-y-4">
-         <input type="hidden" id="selected-product-id">
-         <div class="text-center mb-2 sm:mb-4"><p class="text-sm sm:text-base text-gray-600">Precio: <span id="selected-product-price" class="font-bold text-lg sm:text-xl">$0.00</span>/Kg</p></div>
-         
-         <div>
-             <label class="text-xs sm:text-sm text-gray-600 font-semibold block mb-1">Gramos a vender:</label> 
-             <input type="number" id="quantity-grams" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 sm:px-4 sm:py-3 text-lg sm:text-xl text-center focus:border-blue-500 focus:outline-none" placeholder="500" oninput="updateQuantityPreview()">
-         </div>
-         
-         <div class="grid grid-cols-4 gap-1 sm:gap-2">
-          <button type="button" onclick="setGrams(250)" class="bg-gray-100 hover:bg-gray-200 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-colors">250g</button> 
-          <button type="button" onclick="setGrams(500)" class="bg-gray-100 hover:bg-gray-200 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-colors">500g</button> 
-          <button type="button" onclick="setGrams(1000)" class="bg-gray-100 hover:bg-gray-200 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-colors">1Kg</button> 
-          <button type="button" onclick="setGrams(2000)" class="bg-gray-100 hover:bg-gray-200 py-2 sm:py-3 rounded-lg text-xs sm:text-sm font-semibold transition-colors">2Kg</button>
-         </div>
-         
-         <div class="bg-blue-50 rounded-xl p-3 sm:p-4 text-center mt-2">
-             <p class="text-xs sm:text-sm text-blue-600 mb-1">Total a cobrar:</p>
-             <p id="quantity-preview-total" class="text-xl sm:text-2xl font-bold text-blue-700">$0.00</p>
-         </div>
-         
-         <div class="flex gap-2 sm:gap-3 pt-2">
-          <button type="button" onclick="closeQuantityModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Cancelar </button> 
-          <button type="button" onclick="addToCartConfirm()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Agregar </button>
-         </div>
-        </div>
-       </div>
-  </div>
-
-  <div id="ticket-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide flex flex-col max-h-[90vh]">
-        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 sm:p-4 rounded-t-2xl flex justify-between items-center shrink-0">
-            <h3 class="text-lg sm:text-xl font-bold">🎫 Ticket de Venta</h3>
-            <button onclick="closeTicketModal()" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
-        </div>
-        <div class="p-3 sm:p-4 overflow-y-auto flex-1">
-            <div id="ticket-content" class="ticket-print bg-gray-50 p-3 sm:p-4 rounded-xl text-xs sm:text-sm border-2 border-dashed border-gray-300"></div>
-        </div>
-        <div class="p-3 sm:p-4 border-t bg-white shrink-0 rounded-b-2xl">
-            <div class="flex gap-2 sm:gap-3">
-                <button onclick="closeTicketModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Cerrar </button> 
-                <button onclick="printTicket()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-2"> 🖨️ <span class="hidden sm:inline">Imprimir</span> </button>
-            </div>
-        </div>
+    <p class="text-sm text-gray-600 mb-4">Selecciona una plantilla rápida para <strong id="wa-alumno-nombre" class="text-gray-800"></strong>:</p>
+    <div class="space-y-2">
+     <button onclick="sendWA('saludo')" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition text-sm text-gray-700 truncate">👋 Saludo General</button>
+     <button onclick="sendWA('pago')" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition text-sm text-gray-700 truncate">💰 Recordatorio de Pago</button>
+     <button onclick="sendWA('aviso')" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition text-sm text-gray-700 truncate">📢 Aviso Importante</button>
+     <button onclick="sendWA('calificaciones')" class="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-green-50 hover:border-green-300 transition text-sm text-gray-700 truncate">🎓 Boleta de Calificaciones</button>
     </div>
-  </div>
-
-  <div id="historic-sale-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-slide flex flex-col max-h-[90vh]">
-        <div class="bg-gradient-to-r from-indigo-500 to-blue-500 text-white p-3 sm:p-4 rounded-t-2xl flex justify-between items-center shrink-0">
-            <h3 class="text-lg sm:text-xl font-bold">🎫 Detalles de Venta</h3>
-            <button onclick="closeHistoricSaleModal()" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
-        </div>
-        <div class="p-3 sm:p-4 overflow-y-auto flex-1">
-            <div id="historic-sale-content" class="ticket-print bg-gray-50 p-3 sm:p-4 rounded-xl text-xs sm:text-sm border-2 border-dashed border-gray-300"></div>
-        </div>
-        <div class="p-3 sm:p-4 border-t bg-white shrink-0 rounded-b-2xl">
-            <div class="flex gap-2 sm:gap-3">
-                <button onclick="closeHistoricSaleModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 sm:py-3 rounded-xl text-sm sm:text-base font-bold transition-all"> Cerrar </button>
-            </div>
-        </div>
+    <div class="mt-6 flex justify-end">
+     <button onclick="closeWAModal()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium w-full sm:w-auto">Cancelar</button>
     </div>
-  </div>
-
-  <div id="toast" class="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto bg-green-500 text-white px-5 sm:px-6 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 z-[300] text-center sm:text-left text-sm sm:text-base font-semibold">
-   <p id="toast-message">Mensaje</p>
+   </div>
   </div>
 
   <script>
-    // ============ CONFIGURACIÓN DE FIREBASE ============
+    // ==========================================
+    // LÓGICA DE MENÚ MÓVIL
+    // ==========================================
+    function toggleMobileMenu() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      
+      const isClosed = sidebar.classList.contains('-translate-x-full');
+      
+      if (isClosed) {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('opacity-0');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+      }
+    }
+
+    // ==========================================
+    // CONFIGURACIÓN DE FIREBASE
+    // ==========================================
     const firebaseConfig = {
-  apiKey: "AIzaSyCZop3ajDiubihHxAl_P6oqUSSVN9K5KtQ",
-  authDomain: "tortilleria-23b21.firebaseapp.com",
-  projectId: "tortilleria-23b21",
-  storageBucket: "tortilleria-23b21.firebasestorage.app",
-  messagingSenderId: "105572264872",
-  appId: "1:105572264872:web:e25f23dd46b7793d5ecb9d",
-  measurementId: "G-6BES0ZY9EW"
-};
+      apiKey: "AIzaSyBnojo8egePQ3Inhb-86JfKPdkBLfaLQcM",
+      authDomain: "inglestec-b1613.firebaseapp.com",
+      projectId: "inglestec-b1613",
+      storageBucket: "inglestec-b1613.firebasestorage.app",
+      messagingSenderId: "488457752288",
+      appId: "1:488457752288:web:e0a4ecd272b2345a904a85",
+      measurementId: "G-GL5HF8D3GW"
+    };
 
-
+    // Inicializar Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ============ ESTADO GLOBAL ============
-    let state = {
-      businessName: 'Tortillería El Maíz Dorado',
-      defaultPricePerKg: 22,
-      products: [],
-      cart: [],
-      salesHistory: [],
-      weeklyHistory: [],
-      users: []
+    const COLOR_AZUL_TECNM = [27, 57, 106]; 
+    const nextModuleMap = {
+      '1-2': '3-4',
+      '3-4': '5-6',
+      '5-6': '7-8',
+      '7-8': '9-10',
+      '9-10': 'Egresado'
     };
 
-    let currentUser = null;
-
-    const getVisibleSales = () => {
-      if (!currentUser) return [];
-      if (currentUser.role === 'admin') return state.salesHistory;
-      return state.salesHistory.filter(s => s.branch === currentUser.branch);
-    };
-
-    // ============ BASE DE DATOS ============
-    async function saveState() {
-      try {
-        const dataToSave = { ...state };
-        delete dataToSave.cart; // Nunca subir el carrito actual local
-        await db.collection('datos_sistema').doc('punto_de_venta').set(dataToSave);
-      } catch (error) { showToast("Error al guardar en la nube", "error"); }
-    }
-
-    async function loadState() {
-      try {
-        const doc = await db.collection('datos_sistema').doc('punto_de_venta').get();
-        if (doc.exists) {
-          const parsed = doc.data();
-          state = { ...state, ...parsed };
-          
-          if (!state.users || state.users.length === 0) {
-            state.users = [
-              { id: 1, username: 'Admin', password: 'Admin', role: 'admin', branch: 'Todas' },
-              { id: 2, username: 'sucursal uno', password: '1234', role: 'empleado', branch: 'Sucursal 1' },
-              { id: 3, username: 'sucursal dos', password: '1234', role: 'empleado', branch: 'Sucursal 2' },
-              { id: 4, username: 'sucursal tres', password: '1234', role: 'empleado', branch: 'Sucursal 3' }
-            ];
-            await saveState();
-          }
-
-          const today = new Date().toDateString();
-          const dateDoc = await db.collection('datos_sistema').doc('control_fechas').get();
-          const savedDate = dateDoc.exists ? dateDoc.data().ultimaFecha : null;
-
-          if (savedDate !== today) {
-            if (state.salesHistory && state.salesHistory.length > 0) {
-              state.weeklyHistory.push({
-                date: savedDate,
-                total: state.salesHistory.reduce((sum, s) => sum + s.total, 0),
-                transactions: state.salesHistory.length,
-                sales: [...state.salesHistory]
-              });
-              if (state.weeklyHistory.length > 7) state.weeklyHistory.shift();
-            }
-            state.salesHistory = [];
-            await db.collection('datos_sistema').doc('control_fechas').set({ ultimaFecha: today });
-            await saveState();
-          }
-        } else {
-          state.products = [{ id: 1, name: 'Tortilla de Maíz', pricePerKg: 22, emoji: '🫓', color: 'amber' }, { id: 2, name: 'Tortilla de Harina', pricePerKg: 35, emoji: '🥙', color: 'yellow' }];
-          state.users = [
-            { id: 1, username: 'Admin', password: 'Admin', role: 'admin', branch: 'Todas' },
-            { id: 2, username: 'sucursal uno', password: '1234', role: 'empleado', branch: 'Sucursal 1' },
-            { id: 3, username: 'sucursal dos', password: '1234', role: 'empleado', branch: 'Sucursal 2' },
-            { id: 4, username: 'sucursal tres', password: '1234', role: 'empleado', branch: 'Sucursal 3' }
-          ];
-          await db.collection('datos_sistema').doc('control_fechas').set({ ultimaFecha: new Date().toDateString() });
-          await saveState();
+    // ==========================================
+    // STORAGE MANAGER (NUBE)
+    // ==========================================
+    class StorageManager {
+      constructor() { 
+        this.collection = 'escuela_datos'; 
+      }
+      
+      async getData() { 
+        try {
+          const snapshot = await db.collection(this.collection).get();
+          return snapshot.docs.map(doc => ({ __backendId: doc.id, ...doc.data() }));
+        } catch (error) {
+          console.error("Error obteniendo datos de Firebase:", error);
+          showToast("Error de conexión a la base de datos.", "error");
+          return [];
         }
-      } catch (error) { showToast("Error de conexión", "error"); }
-    }
-
-    async function refreshAdminData() {
-        showToast('Obteniendo información...');
-        const doc = await db.collection('datos_sistema').doc('punto_de_venta').get();
-        if(doc.exists) {
-            const parsed = doc.data();
-            state = { ...state, ...parsed };
-            updateStatistics(); renderSalesHistory(); showToast('Actualizado');
+      }
+      
+      async addRecord(record) { 
+        try {
+          const dataToSave = { ...record };
+          delete dataToSave.__backendId;
+          const docRef = await db.collection(this.collection).add(dataToSave);
+          record.__backendId = docRef.id;
+          return record;
+        } catch (error) {
+          console.error("Error al guardar:", error);
+          showToast("Error al guardar en la nube.", "error");
         }
-    }
-
-    // ============ AUTENTICACIÓN Y ROLES ============
-    function checkAuth() {
-        const savedSession = localStorage.getItem('pos_current_user');
-        if (savedSession) {
-            const parsedSession = JSON.parse(savedSession);
-            const userInDB = state.users.find(u => u.username === parsedSession.username && u.password === parsedSession.password);
-            if (userInDB) { currentUser = userInDB; startApp(); } else { showLogin(); }
-        } else { showLogin(); }
-    }
-
-    function showLogin() {
-        document.getElementById('loading-screen').classList.add('hidden'); document.getElementById('app').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('login-screen').classList.add('flex');
-    }
-
-    function handleLogin(event) {
-        event.preventDefault();
-        const userValue = document.getElementById('login-username').value.trim();
-        const passValue = document.getElementById('login-password').value;
-        const matchedUser = state.users.find(u => u.username.toLowerCase() === userValue.toLowerCase() && u.password === passValue);
-
-        if (matchedUser) {
-            currentUser = matchedUser; localStorage.setItem('pos_current_user', JSON.stringify(matchedUser));
-            document.getElementById('login-username').value = ''; document.getElementById('login-password').value = '';
-            startApp(); showToast(`Bienvenido, ${matchedUser.username}`);
-        } else { showToast('Usuario o contraseña incorrectos', 'error'); }
-    }
-
-    function logout() { 
-        if (currentUser && currentUser.role !== 'admin') clearCart();
-        currentUser = null; localStorage.removeItem('pos_current_user'); switchTab('punto-venta'); showLogin(); 
-    }
-
-    function applyRolePermissions() {
-        const isAdmin = currentUser && currentUser.role === 'admin';
-        document.getElementById('display-username').textContent = currentUser.username;
-        document.getElementById('display-username').className = `font-bold text-xs sm:text-sm px-3 py-1 rounded-full mb-1 ${isAdmin ? 'bg-amber-800 text-white' : 'bg-white/20'}`;
-        document.getElementById('branch-title').textContent = currentUser.branch;
-        document.getElementById('history-branch-name').textContent = isAdmin ? 'Global' : currentUser.branch;
-
-        document.getElementById('tab-btn-usuarios').style.display = isAdmin ? 'block' : 'none';
-        document.getElementById('btn-new-product').style.display = isAdmin ? 'flex' : 'none';
-        document.getElementById('btn-clear-history').style.display = isAdmin ? 'block' : 'none';
-
-        // LÓGICA DE VISTAS (Ocultar carrito al admin y expandir espacio)
-        const quickSaleSec = document.getElementById('quick-sale-section');
-        const rightPanel = document.getElementById('pos-right-panel');
-        const leftPanel = document.getElementById('pos-left-panel');
-
-        if (isAdmin) {
-            quickSaleSec.style.display = 'none';
-            rightPanel.style.display = 'none';
-            leftPanel.classList.remove('lg:col-span-2');
-            leftPanel.classList.add('lg:col-span-3');
-        } else {
-            quickSaleSec.style.display = 'block';
-            rightPanel.style.display = 'block';
-            leftPanel.classList.remove('lg:col-span-3');
-            leftPanel.classList.add('lg:col-span-2');
+      }
+      
+      async updateRecord(record) { 
+        try {
+          const dataToSave = { ...record };
+          const id = dataToSave.__backendId;
+          delete dataToSave.__backendId;
+          await db.collection(this.collection).doc(id).update(dataToSave);
+        } catch (error) {
+          console.error("Error al actualizar:", error);
         }
-
-        renderProducts(); 
-        if(isAdmin) renderUsersTable();
-    }
-
-    function startApp() {
-        document.getElementById('login-screen').classList.add('hidden'); document.getElementById('login-screen').classList.remove('flex');
-        document.getElementById('loading-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
-        applyRolePermissions(); renderCart(); renderSalesHistory();
-    }
-
-    // ============ GESTIÓN DE USUARIOS ============
-    function renderUsersTable() {
-        const tbody = document.getElementById('users-table-body');
-        tbody.innerHTML = state.users.map(user => `
-            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td class="p-3 sm:p-4 font-semibold text-gray-800">${user.username}</td>
-                <td class="p-3 sm:p-4"><span class="bg-gray-200 text-gray-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">${user.branch || 'No asignada'}</span></td>
-                <td class="p-3 sm:p-4 text-gray-500">${user.role === 'admin' ? '••••••••' : user.password}</td>
-                <td class="p-3 sm:p-4"><span class="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-bold rounded-full ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'} uppercase">${user.role}</span></td>
-                <td class="p-3 sm:p-4 text-right whitespace-nowrap">${user.username !== 'Admin' ? `<button onclick="editUser(${user.id})" class="text-blue-500 hover:text-blue-700 p-1 sm:p-2">✏️</button><button onclick="deleteUser(${user.id})" class="text-red-500 hover:text-red-700 p-1 sm:p-2 ml-1">🗑️</button>` : '<span class="text-gray-400 text-xs">Protegido</span>'}</td>
-            </tr>`).join('');
-    }
-
-    function openUserModal(userId = null) {
-        document.getElementById('user-form').reset();
-        if (userId) {
-            const user = state.users.find(u => u.id === userId);
-            if (user) {
-                document.getElementById('user-modal-title').textContent = 'Editar Usuario';
-                document.getElementById('user-id').value = user.id; document.getElementById('user-username').value = user.username;
-                document.getElementById('user-password').value = user.password; document.getElementById('user-branch-input').value = user.branch || 'Sucursal 1';
-                document.getElementById('user-role').value = user.role;
-            }
-        } else { document.getElementById('user-modal-title').textContent = 'Nuevo Usuario'; document.getElementById('user-id').value = ''; }
-        document.getElementById('user-modal').classList.remove('hidden'); document.getElementById('user-modal').classList.add('flex');
-    }
-    function closeUserModal() { document.getElementById('user-modal').classList.add('hidden'); document.getElementById('user-modal').classList.remove('flex'); }
-
-    async function saveUser(event) {
-        event.preventDefault(); const id = document.getElementById('user-id').value;
-        const userData = {
-            username: document.getElementById('user-username').value.trim(), password: document.getElementById('user-password').value,
-            branch: document.getElementById('user-branch-input').value.trim() || 'Desconocida', role: document.getElementById('user-role').value
-        };
-        if(userData.username === '') return showToast('Usuario inválido', 'error');
-        if (id) {
-            const index = state.users.findIndex(u => u.id === parseInt(id));
-            if (index !== -1) { state.users[index] = { ...state.users[index], ...userData }; showToast('Usuario actualizado'); }
-        } else {
-            if(state.users.some(u => u.username.toLowerCase() === userData.username.toLowerCase())) return showToast('Usuario ya existe', 'error');
-            state.users.push({ id: state.users.length > 0 ? Math.max(...state.users.map(u => u.id)) + 1 : 1, ...userData }); showToast('Usuario creado');
+      }
+      
+      async deleteRecord(id) { 
+        try {
+          await db.collection(this.collection).doc(id).delete();
+        } catch (error) {
+          console.error("Error al eliminar:", error);
         }
-        await saveState(); renderUsersTable(); closeUserModal();
+      }
     }
-    function editUser(id) { openUserModal(id); }
-    async function deleteUser(id) { if(confirm('¿Eliminar usuario?')) { state.users = state.users.filter(u => u.id !== id); await saveState(); renderUsersTable(); showToast('Eliminado'); } }
 
-    // ============ PESTAÑAS ============
-    function switchTab(tabName) {
-      document.querySelectorAll('.tab-content').forEach(tab => { tab.classList.add('hidden'); tab.classList.remove('active'); });
-      document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('border-amber-500', 'text-amber-600'); btn.classList.add('border-transparent', 'text-gray-600'); });
+    const storage = new StorageManager();
+
+    // Variables de Estado
+    let allData = [];
+    let currentUser = null; 
+    let currentSection = '';
+    let confirmCallback = null;
+    let editAlumnoId = null;
+    let editMaestroId = null; 
+    let isReinscripcion = false; 
+    let currentWAAlumnoId = null;
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+      toast.className = `toast ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg text-sm md:text-base`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ==========================================
+    // SISTEMA DE ROLES Y LOGIN
+    // ==========================================
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const userVal = document.getElementById('login-user').value.trim();
+      const passVal = document.getElementById('login-pass').value.trim();
+      const errorDiv = document.getElementById('login-error');
+      const btnLogin = document.getElementById('btn-login');
+
+      btnLogin.disabled = true;
+      btnLogin.innerHTML = '<svg class="w-5 h-5 animate-spin mx-auto" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
       
-      const tabElement = document.getElementById(`tab-${tabName}`);
-      if (tabElement) { tabElement.classList.remove('hidden'); tabElement.classList.add('active'); }
-      
-      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabName));
-      if (activeBtn) { activeBtn.classList.add('border-amber-500', 'text-amber-600'); activeBtn.classList.remove('border-transparent', 'text-gray-600'); }
-      
-      if (tabName === 'reporte-diario') generateDailyReport(); 
-      else if (tabName === 'reporte-semanal') generateWeeklyReport(); 
-      else if (tabName === 'estadisticas') { if(currentUser && currentUser.role === 'admin') refreshAdminData(); else updateStatistics(); }
-    }
+      allData = await storage.getData(); 
+      let loggedIn = false;
 
-    // ============ RENDERIZADO (PRODUCTOS, VENTAS RÁPIDAS Y CARRITO) ============
-    function renderProducts() {
-      const grid = document.getElementById('products-grid');
-      if (state.products.length === 0) { grid.innerHTML = '<p class="col-span-full text-gray-400 text-center py-8">No hay productos.</p>'; return; }
-      
-      const isAdmin = currentUser && currentUser.role === 'admin';
-      grid.innerHTML = state.products.map(product => `
-        <div class="product-card bg-gradient-to-br from-${product.color}-100 to-${product.color}-50 rounded-xl p-3 sm:p-4 cursor-pointer transition-all border-2 border-${product.color}-200 hover:border-${product.color}-400 hover:shadow-lg relative group flex flex-col items-center justify-center" onclick="${isAdmin ? '' : `openQuantityModal(${product.id})`}">
-          ${isAdmin ? `<div class="absolute top-1 sm:top-2 right-1 sm:right-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"><button onclick="event.stopPropagation(); editProduct(${product.id})" class="bg-white/80 hover:bg-white p-1 sm:p-2 rounded-lg text-xs shadow-sm">✏️</button><button onclick="event.stopPropagation(); deleteProduct(${product.id})" class="bg-white/80 hover:bg-red-100 p-1 sm:p-2 rounded-lg text-xs shadow-sm">🗑️</button></div>` : ''}
-          <div class="text-3xl sm:text-4xl text-center mb-1 sm:mb-2">${product.emoji}</div>
-          <h3 class="font-bold text-gray-800 text-center text-xs sm:text-sm leading-tight">${product.name}</h3>
-          <p class="text-${product.color}-600 font-bold text-center text-xs sm:text-sm mt-1">$${product.pricePerKg.toFixed(2)}/Kg</p>
-        </div>`).join('');
-        
-      renderQuickSaleProducts();
-    }
-
-    function renderQuickSaleProducts() {
-        const select = document.getElementById('quick-sale-product');
-        if (!select) return;
-        
-        const currentSelection = select.value;
-        select.innerHTML = state.products.map(p => `<option value="${p.id}" class="text-gray-800 bg-white">${p.emoji} ${p.name} ($${p.pricePerKg}/Kg)</option>`).join('');
-
-        if (currentSelection && state.products.find(p => p.id === parseInt(currentSelection))) {
-            select.value = currentSelection;
-        } else {
-            const defaultProduct = state.products.find(p => p.name.toLowerCase().includes('maíz')) || state.products[0];
-            if (defaultProduct) select.value = defaultProduct.id;
-        }
-        updateQuickSaleButtons();
-    }
-
-    function quickSaleByMoney(amount) {
-      if(!currentUser || currentUser.role === 'admin') return;
-      const select = document.getElementById('quick-sale-product');
-      let product;
-      
-      if (select && select.value) { product = state.products.find(p => p.id === parseInt(select.value)); } 
-      else { product = state.products.find(p => p.name.toLowerCase().includes('maíz')) || state.products[0]; }
-      
-      if (!product) return showToast('No hay productos disponibles', 'error');
-      
-      state.cart.push({ 
-          productId: product.id, name: product.name, emoji: product.emoji, 
-          grams: Math.round((amount / product.pricePerKg) * 1000), 
-          pricePerKg: product.pricePerKg, total: amount 
-      });
-      renderCart(); showToast(`$${amount} de ${product.name} agregado`);
-    }
-
-    function updateQuickSaleButtons() {
-      const select = document.getElementById('quick-sale-product');
-      if (!select) return;
-      const product = state.products.find(p => p.id === parseInt(select.value));
-      if (!product) return;
-
-      const price = product.pricePerKg;
-      [5, 10, 20, 50].forEach(a => { 
-          const el = document.getElementById(`quick-${a}`); 
-          if(el) el.textContent = `${Math.round((a / price) * 1000)}g`; 
-      });
-    }
-
-    function quickSaleCustomMoney() {
-      const amount = parseFloat(document.getElementById('custom-money').value);
-      if (!amount || amount <= 0) return showToast('Monto inválido', 'error');
-      quickSaleByMoney(amount); document.getElementById('custom-money').value = '';
-    }
-
-    function openQuantityModal(productId) {
-      if(!currentUser || currentUser.role === 'admin') return;
-      const product = state.products.find(p => p.id === productId); if (!product) return;
-      document.getElementById('quantity-modal-title').textContent = product.name; document.getElementById('selected-product-id').value = productId;
-      document.getElementById('selected-product-price').textContent = `$${product.pricePerKg.toFixed(2)}`;
-      document.getElementById('quantity-grams').value = ''; document.getElementById('quantity-preview-total').textContent = '$0.00';
-      document.getElementById('quantity-modal').classList.replace('hidden', 'flex'); setTimeout(()=> document.getElementById('quantity-grams').focus(), 100);
-    }
-    
-    function closeQuantityModal() { document.getElementById('quantity-modal').classList.replace('flex', 'hidden'); }
-    function setGrams(grams) { document.getElementById('quantity-grams').value = grams; updateQuantityPreview(); }
-    
-    function updateQuantityPreview() {
-      const p = state.products.find(p => p.id === parseInt(document.getElementById('selected-product-id').value));
-      const g = parseFloat(document.getElementById('quantity-grams').value) || 0;
-      if (p) document.getElementById('quantity-preview-total').textContent = `$${((g / 1000) * p.pricePerKg).toFixed(2)}`;
-    }
-    
-    function addToCartConfirm() {
-      const p = state.products.find(p => p.id === parseInt(document.getElementById('selected-product-id').value));
-      const g = parseFloat(document.getElementById('quantity-grams').value) || 0;
-      if (!p || g <= 0) return showToast('Cantidad inválida', 'error');
-      state.cart.push({ productId: p.id, name: p.name, emoji: p.emoji, grams: g, pricePerKg: p.pricePerKg, total: (g / 1000) * p.pricePerKg });
-      renderCart(); closeQuantityModal(); showToast(`${p.name} agregado`);
-      
-      // Auto-scroll en móviles hacia abajo para que vean que se agregó
-      if(window.innerWidth < 1024) { setTimeout(() => { document.getElementById('pos-right-panel').scrollIntoView({ behavior: 'smooth' }); }, 100); }
-    }
-    
-    function renderCart() {
-      const cartDiv = document.getElementById('cart-items');
-      if(!cartDiv) return;
-      
-      if(!currentUser || currentUser.role === 'admin') { cartDiv.innerHTML = ''; return; }
-      
-      if (state.cart.length === 0) { cartDiv.innerHTML = '<p class="text-gray-400 text-sm sm:text-base text-center py-6 sm:py-8">Carrito vacío</p>'; document.getElementById('cart-subtotal').textContent = '$0.00'; document.getElementById('cart-total').textContent = '$0.00'; return; }
-      
-      let subtotal = 0;
-      cartDiv.innerHTML = state.cart.map((item, idx) => {
-        subtotal += item.total;
-        return `<div class="flex items-center justify-between bg-gray-50 rounded-xl p-2 sm:p-3 animate-slide"><div class="flex items-center gap-2 sm:gap-3"><span class="text-xl sm:text-2xl">${item.emoji}</span><div><p class="font-semibold text-gray-800 text-xs sm:text-sm">${item.name}</p><p class="text-gray-500 text-[10px] sm:text-xs">${item.grams}g × $${item.pricePerKg}/Kg</p></div></div><div class="flex items-center gap-1 sm:gap-2"><span class="font-bold text-gray-800 text-sm sm:text-base">$${item.total.toFixed(2)}</span><button onclick="removeFromCart(${idx})" class="text-red-400 hover:text-red-600 p-2 sm:p-1 text-lg leading-none">&times;</button></div></div>`;
-      }).join('');
-      document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`; document.getElementById('cart-total').textContent = `$${subtotal.toFixed(2)}`;
-    }
-    
-    function removeFromCart(index) { state.cart.splice(index, 1); renderCart(); }
-    
-    function clearCart() { 
-        state.cart = []; 
-        const payInput = document.getElementById('payment-amount');
-        const changeDisp = document.getElementById('change-display');
-        if(payInput) payInput.value = ''; 
-        if(changeDisp) changeDisp.classList.add('hidden'); 
-        renderCart(); 
-    }
-
-    function calculateChange() {
-      const payment = parseFloat(document.getElementById('payment-amount').value) || 0;
-      const total = state.cart.reduce((sum, item) => sum + item.total, 0);
-      const cd = document.getElementById('change-display');
-      if (payment > 0 && payment >= total) { cd.classList.remove('hidden'); document.getElementById('change-amount').textContent = `$${(payment - total).toFixed(2)}`; } 
-      else { cd.classList.add('hidden'); }
-    }
-
-    async function completeSale() {
-      if (state.cart.length === 0) return showToast('Carrito vacío', 'error');
-      const total = state.cart.reduce((sum, item) => sum + item.total, 0);
-      const now = new Date();
-      
-      const newSale = {
-        time: now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-        total: total, items: [...state.cart], timestamp: now.getTime(),
-        user: currentUser.username, branch: currentUser.branch
-      };
-
-      try {
-        const docRef = db.collection('datos_sistema').doc('punto_de_venta');
-        const docSnap = await docRef.get();
-        if (docSnap.exists) {
-            const cloudData = docSnap.data();
-            cloudData.salesHistory = cloudData.salesHistory || [];
-            cloudData.salesHistory.push(newSale);
-            state.salesHistory = cloudData.salesHistory; 
-            await docRef.set(cloudData);
-        } else {
-            state.salesHistory.push(newSale); await saveState();
-        }
-        clearCart(); renderSalesHistory(); showToast(`Venta procesada: $${total.toFixed(2)}`);
-      } catch (error) { showToast("Error al procesar venta en la red", "error"); }
-    }
-
-    // ============ HISTORIAL Y ESTADÍSTICAS ============
-    function renderSalesHistory() {
-      const historyDiv = document.getElementById('sales-history');
-      if(!historyDiv) return;
-      
-      const visibleSales = getVisibleSales();
-
-      if (visibleSales.length === 0) { historyDiv.innerHTML = '<p class="text-gray-400 text-sm sm:text-base text-center py-4">Sin ventas hoy</p>'; document.getElementById('daily-total').textContent = '$0.00'; return; }
-      
-      const isAdmin = currentUser && currentUser.role === 'admin';
-
-      historyDiv.innerHTML = visibleSales.map((sale, index) => `
-        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm transition-all hover:bg-gray-100 group">
-          <div class="cursor-pointer flex-1" onclick="showHistoricSale(${sale.timestamp})">
-            <span class="text-gray-500 font-bold">#${index + 1}</span>
-            <span class="text-gray-400 ml-1 sm:ml-2">${sale.time}</span> 
-            <span class="text-[9px] sm:text-[10px] ml-1 font-bold text-amber-600 block sm:inline">(${sale.branch})</span>
-          </div>
-          <div class="flex items-center gap-2 sm:gap-3">
-            <span class="font-bold text-green-600 cursor-pointer text-sm sm:text-base" onclick="showHistoricSale(${sale.timestamp})">$${sale.total.toFixed(2)}</span>
-            ${isAdmin ? `<button onclick="event.stopPropagation(); deleteIndividualSale(${sale.timestamp})" class="text-red-400 hover:text-red-600 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity p-2 sm:p-1" title="Eliminar">🗑️</button>` : ''}
-          </div>
-        </div>`).reverse().join(''); // Invertir para ver el más nuevo arriba
-        
-      document.getElementById('daily-total').textContent = `$${visibleSales.reduce((sum, s) => sum + s.total, 0).toFixed(2)}`;
-    }
-
-    async function deleteIndividualSale(timestamp) {
-        if (currentUser.role !== 'admin') return showToast('No tienes permisos', 'error');
-        if (confirm('¿Estás seguro de que deseas eliminar este ticket? Esto restará el dinero de las estadísticas y no se puede deshacer.')) {
-            state.salesHistory = state.salesHistory.filter(s => s.timestamp !== timestamp);
-            await saveState(); renderSalesHistory(); updateStatistics(); showToast('Venta eliminada');
-        }
-    }
-
-    async function clearDailySales() {
-        if(currentUser.role !== 'admin') return showToast('No tienes permisos', 'error');
-        if(confirm('¿Seguro que deseas limpiar TODAS las ventas de TODAS las sucursales del día de hoy?')) {
-            state.salesHistory = []; await saveState(); renderSalesHistory(); updateStatistics(); showToast('Historial global limpiado');
-        }
-    }
-
-    function updateStatistics() {
-        const visibleSales = getVisibleSales();
-        const dailyTotal = visibleSales.reduce((sum, s) => sum + s.total, 0);
-
-        document.getElementById('stats-title').textContent = currentUser.role === 'admin' ? 'Global y por Sucursal' : `Estadísticas - ${currentUser.branch}`;
-        const btnRefresh = document.getElementById('btn-refresh-stats');
-        if (currentUser.role === 'admin') btnRefresh.classList.remove('hidden'); else btnRefresh.classList.add('hidden');
-
-        document.getElementById('stat-daily-total').textContent = `$${dailyTotal.toFixed(2)}`;
-        document.getElementById('stat-daily-transactions').textContent = visibleSales.length;
-        document.getElementById('stat-daily-average').textContent = `$${visibleSales.length > 0 ? (dailyTotal / visibleSales.length).toFixed(2) : '0.00'}`;
-        
-        let bestProductToday = '-';
-        const productCountToday = {};
-        visibleSales.forEach(sale => { sale.items.forEach(item => { productCountToday[item.name] = (productCountToday[item.name] || 0) + item.grams; }); });
-        const maxProduct = Object.entries(productCountToday).sort((a, b) => b[1] - a[1])[0];
-        if (maxProduct) { bestProductToday = `${maxProduct[0]} (${(maxProduct[1]/1000).toFixed(1)}kg)`; }
-        document.getElementById('stat-daily-best').textContent = bestProductToday;
-
-        const adminPanel = document.getElementById('admin-branches-stats');
-        if (currentUser.role === 'admin') {
-            adminPanel.classList.remove('hidden');
-            const branchesGrid = document.getElementById('branches-stats-grid');
-            const uniqueBranches = [...new Set(state.users.map(u => u.branch))].filter(b => b && b !== 'Todas');
-            
-            if (uniqueBranches.length === 0) branchesGrid.innerHTML = '<p class="text-gray-400 text-sm">No hay sucursales registradas aún.</p>';
-            else {
-                branchesGrid.innerHTML = uniqueBranches.map(bName => {
-                    const bSales = state.salesHistory.filter(s => s.branch === bName);
-                    const bTotal = bSales.reduce((sum, s) => sum + s.total, 0);
-                    let bBest = 'N/A';
-                    const bProductCount = {};
-                    bSales.forEach(sale => { sale.items.forEach(item => { bProductCount[item.name] = (bProductCount[item.name] || 0) + item.grams; }); });
-                    const bMax = Object.entries(bProductCount).sort((a, b) => b[1] - a[1])[0];
-                    if (bMax) bBest = bMax[0];
-
-                    return `
-                    <div class="bg-white rounded-2xl shadow border-2 border-gray-100 p-4 sm:p-5 relative overflow-hidden transition-all hover:shadow-lg hover:border-blue-200 group">
-                        <div class="absolute -right-4 -top-4 text-5xl sm:text-6xl opacity-10 group-hover:scale-110 transition-transform">🏬</div>
-                        <h4 class="text-base sm:text-lg font-bold text-gray-800 mb-2 sm:mb-3 border-b border-gray-100 pb-2">${bName}</h4>
-                        <div class="space-y-1 sm:space-y-2 text-xs sm:text-sm">
-                            <div class="flex justify-between"><span class="text-gray-500">Ventas:</span> <span class="font-bold text-blue-600">$${bTotal.toFixed(2)}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-500">Tickets:</span> <span class="font-bold text-gray-800">${bSales.length}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-500">Promedio:</span> <span class="font-bold text-gray-800">$${bSales.length > 0 ? (bTotal/bSales.length).toFixed(2) : '0.00'}</span></div>
-                            <div class="flex justify-between"><span class="text-gray-500">Top:</span> <span class="font-bold text-amber-600 truncate ml-2 max-w-[100px] text-right">${bBest}</span></div>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-        } else { adminPanel.classList.add('hidden'); }
-
-        const allDaysData = state.weeklyHistory.map(day => {
-            const daySalesFiltered = currentUser.role === 'admin' ? day.sales : day.sales.filter(s => s.branch === currentUser.branch);
-            return { date: day.date, total: daySalesFiltered.reduce((sum, s) => sum + s.total, 0), transactions: daySalesFiltered.length };
-        });
-        allDaysData.push({ date: new Date().toDateString(), total: dailyTotal, transactions: visibleSales.length });
-        
-        const last7Days = allDaysData.slice(-7);
-        const totalWeekly = last7Days.reduce((sum, d) => sum + d.total, 0);
-        const transWeekly = last7Days.reduce((sum, d) => sum + d.transactions, 0);
-        
-        document.getElementById('stat-weekly-total').textContent = `$${totalWeekly.toFixed(2)}`;
-        document.getElementById('stat-weekly-transactions').textContent = transWeekly;
-        document.getElementById('stat-weekly-daily-avg').textContent = `$${last7Days.length > 0 ? (totalWeekly / last7Days.length).toFixed(2) : '0.00'}`;
-        document.getElementById('stat-weekly-avg').textContent = `$${transWeekly > 0 ? (totalWeekly / transWeekly).toFixed(2) : '0.00'}`;
-
-        const chartDiv = document.getElementById('weekly-chart');
-        const maxDailyTotal = Math.max(...last7Days.map(d => d.total), 1); 
-
-        if (totalWeekly === 0) { chartDiv.innerHTML = '<p class="text-gray-400 text-xs sm:text-sm text-center py-8 w-full">No hay ventas registradas.</p>'; } 
-        else {
-            chartDiv.innerHTML = last7Days.map(day => {
-                // Ajustamos la altura de la gráfica para móviles (máximo 120px en móvil, 150px en PC)
-                const height = Math.max(10, (day.total / maxDailyTotal) * (window.innerWidth < 640 ? 120 : 150));
-                const dayDate = new Date(day.date);
-                let dayName = dayDate.toLocaleDateString('es-MX', { weekday: 'short' });
-                if (day.date === new Date().toDateString()) dayName = 'Hoy';
-                const kValue = day.total >= 1000 ? `$${(day.total / 1000).toFixed(1)}k` : `$${day.total.toFixed(0)}`;
-
-                return `<div class="flex flex-col items-center gap-1 sm:gap-2"><div class="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-sm sm:rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500 w-6 sm:w-8 md:w-12 shadow-sm" style="height: ${height}px; cursor: pointer;" title="$${day.total.toFixed(2)}"></div><span class="text-[10px] sm:text-xs font-semibold text-gray-600 capitalize">${dayName}</span><span class="text-[9px] sm:text-[10px] md:text-xs text-gray-500">${kValue}</span></div>`;
-            }).join('');
-        }
-    }
-
-    // ============ MODALES DE PRODUCTOS (ADMIN) ============
-    function openProductModal(productId = null) {
-      if(currentUser.role !== 'admin') return;
-      document.getElementById('product-form').reset(); document.getElementById('product-emoji').value = '🫓';
-      if (productId) {
-        const product = state.products.find(p => p.id === productId);
-        if (product) {
-          document.getElementById('modal-title').textContent = 'Editar Producto'; document.getElementById('product-id').value = product.id;
-          document.getElementById('product-name').value = product.name; document.getElementById('product-price').value = product.pricePerKg;
-          document.getElementById('product-emoji').value = product.emoji; document.getElementById('product-color').value = product.color;
-        }
-      } else { document.getElementById('modal-title').textContent = 'Nuevo Producto'; document.getElementById('product-id').value = ''; }
-      document.getElementById('product-modal').classList.replace('hidden', 'flex');
-    }
-    function closeProductModal() { document.getElementById('product-modal').classList.replace('flex', 'hidden'); }
-    async function saveProduct(e) {
-      e.preventDefault(); const id = document.getElementById('product-id').value;
-      const data = { name: document.getElementById('product-name').value, pricePerKg: parseFloat(document.getElementById('product-price').value), emoji: document.getElementById('product-emoji').value || '🫓', color: document.getElementById('product-color').value };
-      if (id) { const i = state.products.findIndex(p => p.id === parseInt(id)); if (i !== -1) { state.products[i] = { ...state.products[i], ...data }; showToast('Actualizado'); } } 
-      else { state.products.push({ id: state.products.length > 0 ? Math.max(...state.products.map(p => p.id)) + 1 : 1, ...data }); showToast('Agregado'); }
-      await saveState(); renderProducts(); closeProductModal();
-    }
-    function editProduct(id) { openProductModal(id); }
-    async function deleteProduct(id) { if(confirm('¿Eliminar producto?')) { state.products = state.products.filter(p => p.id !== id); await saveState(); renderProducts(); showToast('Eliminado'); } }
-
-    // ============ TICKETS Y REPORTES ============
-    function generateTicket() { 
-      if (state.cart.length === 0) return showToast('El carrito está vacío', 'error');
-      
-      const total = state.cart.reduce((s, i) => s + i.total, 0);
-      const pagoCliente = parseFloat(document.getElementById('payment-amount').value) || 0;
-
-      let t = `================================\n      ${state.businessName}\n       ${currentUser.branch}\n================================\nCajero: ${currentUser.username}\nFecha: ${new Date().toLocaleDateString('es-MX')}\nHora:  ${new Date().toLocaleTimeString('es-MX')}\n--------------------------------\nPRODUCTOS:\n`;
-      state.cart.forEach(i => t += `${i.name}\n  ${i.grams}g × $${i.pricePerKg}/Kg -> $${i.total.toFixed(2)}\n`);
-      t += `--------------------------------\nTOTAL:          $${total.toFixed(2)}\n`;
-
-      if (pagoCliente > 0) {
-          t += `EFECTIVO:       $${pagoCliente.toFixed(2)}\n`;
-          if (pagoCliente >= total) {
-              const cambio = pagoCliente - total;
-              t += `CAMBIO:         $${cambio.toFixed(2)}\n`;
+      // 1. Verificación Admin
+      if (userVal === 'admin' && passVal === 'admin') {
+          currentUser = { role: 'admin', nombre: 'Administrador' };
+          loggedIn = true;
+      } else {
+          // 2. Verificación Maestro 
+          const maestro = allData.find(d => d.type === 'maestro' && d.maestro_nombre.toLowerCase() === userVal.toLowerCase() && passVal === (d.maestro_password || '12345'));
+          if (maestro) {
+              currentUser = { role: 'maestro', nombre: maestro.maestro_nombre, id: maestro.__backendId };
+              loggedIn = true;
+          } else {
+              // 3. Verificación Alumno 
+              const alumno = allData.find(d => d.type === 'alumno' && d.numero_control === userVal && passVal === (d.alumno_password || d.numero_control));
+              if (alumno) {
+                  currentUser = { role: 'alumno', nombre: alumno.nombre_completo, id: alumno.__backendId, data: alumno };
+                  loggedIn = true;
+              }
           }
       }
 
-      t += `================================\n   ¡Gracias por su compra!\n================================`;
-      document.getElementById('ticket-content').textContent = t; document.getElementById('ticket-modal').classList.replace('hidden','flex');
-    }
-    function closeTicketModal() { document.getElementById('ticket-modal').classList.replace('flex','hidden'); }
-    function printTicket() { window.print(); }
+      if (loggedIn) {
+          document.getElementById('login-screen').classList.add('hidden');
+          document.getElementById('dashboard').classList.remove('hidden');
+          document.getElementById('dashboard').classList.add('flex');
+          
+          document.getElementById('sidebar-title').textContent = currentUser.nombre;
+          document.getElementById('sidebar-role').textContent = currentUser.role.toUpperCase();
 
-    function showHistoricSale(timestamp) {
-      const sale = state.salesHistory.find(s => s.timestamp === timestamp); if (!sale) return;
-      let t = `================================\n      ${state.businessName}\n       ${sale.branch}\n================================\nCajero: ${sale.user}\nHora:  ${sale.time}\nFecha: ${new Date().toLocaleDateString('es-MX')}\n--------------------------------\nPRODUCTOS:\n`;
-      sale.items.forEach(i => t += `${i.name}\n  ${i.grams}g × $${i.pricePerKg}/Kg -> $${i.total.toFixed(2)}\n`);
-      t += `--------------------------------\nTOTAL:          $${sale.total.toFixed(2)}\n================================`;
-      document.getElementById('historic-sale-content').textContent = t; document.getElementById('historic-sale-modal').classList.replace('hidden','flex');
-    }
-    function closeHistoricSaleModal() { document.getElementById('historic-sale-modal').classList.replace('flex','hidden'); }
+          renderUIBasedOnRole();
+          showToast(`¡Bienvenido, ${currentUser.nombre}!`);
+      } else {
+          errorDiv.textContent = 'Usuario o contraseña incorrectos';
+          errorDiv.classList.remove('hidden');
+      }
 
-    function generateDailyReport() {
-        const visibleSales = getVisibleSales();
-        const dailyTotal = visibleSales.reduce((sum, s) => sum + s.total, 0);
-        let report = `REPORTE DIARIO DE VENTAS - ${currentUser.role === 'admin' ? 'TODAS LAS SUCURSALES' : currentUser.branch}\nGenerado: ${new Date().toLocaleTimeString('es-MX')}\n\nTotal: $${dailyTotal.toFixed(2)}\nTransacciones: ${visibleSales.length}\n\nDetalle:\n`;
-        visibleSales.forEach((sale, i) => {
-            report += `#${i+1} [${sale.time}] ${sale.branch}: $${sale.total.toFixed(2)}\n`;
-            sale.items.forEach(item => report += `  - ${item.grams}g ${item.name}\n`);
+      btnLogin.disabled = false;
+      btnLogin.textContent = 'Iniciar Sesión';
+    });
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('flex');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('login-user').value = '';
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-error').classList.add('hidden');
+    }
+
+    function renderUIBasedOnRole() {
+      document.querySelectorAll('.sidebar-item').forEach(el => el.classList.add('hidden'));
+      document.getElementById('stats-header').classList.add('hidden');
+
+      if (currentUser.role === 'admin') {
+          ['nav-alumnos', 'nav-maestros', 'nav-grupos', 'nav-listas', 'nav-calificaciones', 'nav-historial'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+          document.getElementById('stats-header').classList.remove('hidden');
+          document.getElementById('stat-card-maestros').classList.remove('hidden');
+          document.getElementById('th-acciones-calif').classList.remove('hidden');
+          loadAllData();
+          showSection('alumnos');
+
+      } else if (currentUser.role === 'maestro') {
+          ['nav-listas', 'nav-calificaciones'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+          document.getElementById('stats-header').classList.remove('hidden');
+          document.getElementById('stat-card-maestros').classList.add('hidden'); 
+          
+          document.getElementById('card-captura-calificaciones').classList.remove('hidden');
+          document.getElementById('th-acciones-calif').classList.add('hidden');
+
+          loadAllData();
+          showSection('calificaciones');
+
+      } else if (currentUser.role === 'alumno') {
+          ['nav-mis-calificaciones'].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+          showSection('mis-calificaciones');
+          renderMisCalificaciones();
+      }
+    }
+
+    function showSection(section) {
+      currentSection = section;
+      ['alumnos', 'maestros', 'grupos', 'listas', 'calificaciones', 'historial', 'mis-calificaciones'].forEach(s => {
+        document.getElementById(`section-${s}`)?.classList.add('hidden');
+      });
+      document.getElementById(`section-${section}`)?.classList.remove('hidden');
+      
+      document.querySelectorAll('.sidebar-item').forEach(btn => {
+        btn.classList.remove('bg-white/20');
+        if (btn.dataset.section === section) {
+          btn.classList.add('bg-white/20');
+        }
+      });
+
+      if (section === 'calificaciones') {
+        actualizarEstadisticasCalificaciones();
+        actualizarSelectsCalificaciones();
+      }
+      if (section === 'historial') {
+        updateHistorialSelect();
+      }
+
+      // Cerrar el menú en móviles después de hacer clic en una sección
+      if (window.innerWidth < 768) {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar.classList.contains('-translate-x-full')) {
+            toggleMobileMenu();
+        }
+      }
+    }
+
+    // ==========================================
+    // LÓGICA EXCLUSIVA DEL ALUMNO
+    // ==========================================
+    function renderMisCalificaciones() {
+      const alumno = currentUser.data;
+      document.getElementById('alumno-perfil-nombre').textContent = alumno.nombre_completo;
+      document.getElementById('alumno-perfil-info').textContent = `${alumno.numero_control} • ${alumno.carrera}`;
+
+      const misCalificaciones = allData.filter(d => d.type === 'calificacion' && d.alumno_id === alumno.__backendId);
+      const tbody = document.getElementById('tabla-mis-calificaciones');
+
+      if (misCalificaciones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400">Aún no tienes calificaciones registradas.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = misCalificaciones.map(calif => {
+        const grupo = allData.find(g => g.__backendId === calif.grupo_id);
+        const mod = grupo ? grupo.modulo : 'N/A';
+        const p1 = calif.parcial_1 ?? '-'; const p2 = calif.parcial_2 ?? '-'; const p3 = calif.parcial_3 ?? '-'; const p4 = calif.parcial_4 ?? '-'; 
+        const promedio = calif.promedio ?? '-'; const estado = calif.estado ?? 'SIN CALIFICAR';
+        const estadoClass = estado === 'APROBADO' ? 'bg-green-100 text-green-700' : estado === 'REPROBADO' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700';
+
+        return `
+          <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-3 px-4 text-sm text-gray-800 font-medium">${calif.grupo_nombre}</td>
+            <td class="py-3 px-4 text-sm text-gray-600">${mod}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p1}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p2}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p3}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p4}</td>
+            <td class="py-3 px-4 text-center text-sm font-bold text-gray-800">${promedio}</td>
+            <td class="py-3 px-4 text-center"><span class="px-3 py-1 text-xs font-semibold rounded-full ${estadoClass}">${estado}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // FUNCIONES BASE
+    // ==========================================
+    function showConfirmModal(title, message, btnText, btnClass, callback) {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-text').textContent = message;
+      const confirmBtn = document.getElementById('confirm-action-btn');
+      confirmBtn.textContent = btnText;
+      confirmBtn.className = `px-4 py-2 text-white rounded-lg transition w-full sm:w-auto ${btnClass}`;
+      document.getElementById('confirm-modal').classList.remove('hidden');
+      confirmCallback = callback;
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirm-modal').classList.add('hidden');
+      confirmCallback = null;
+    }
+
+    document.getElementById('confirm-action-btn').addEventListener('click', async function() {
+      if (confirmCallback) { await confirmCallback(); closeConfirmModal(); }
+    });
+
+    function openWAModal(id) {
+      const alumno = allData.find(a => a.__backendId === id);
+      if (!alumno || !alumno.telefono) { showToast('El alumno no tiene un número registrado.', 'error'); return; }
+      currentWAAlumnoId = id;
+      document.getElementById('wa-alumno-nombre').textContent = alumno.nombre_completo;
+      document.getElementById('whatsapp-modal').classList.remove('hidden');
+    }
+
+    function closeWAModal() { document.getElementById('whatsapp-modal').classList.add('hidden'); currentWAAlumnoId = null; }
+
+    function sendWA(type) {
+      const alumno = allData.find(a => a.__backendId === currentWAAlumnoId);
+      if (!alumno) return;
+      let rawPhone = alumno.telefono.replace(/\D/g, '');
+      if(rawPhone.length === 10) rawPhone = '52' + rawPhone; 
+      let message = "";
+      
+      if (type === 'saludo') message = `Hola ${alumno.nombre_completo}, te escribimos del Centro de Idiomas.`;
+      else if (type === 'pago') message = `Hola ${alumno.nombre_completo}. Este es un recordatorio amigable del Centro de Idiomas sobre tu próximo pago de colegiatura. Quedamos a tu disposición para cualquier duda.`;
+      else if (type === 'aviso') message = `Hola ${alumno.nombre_completo}, te contactamos del Centro de Idiomas para darte un aviso importante: `;
+      else if (type === 'calificaciones') {
+         const calif = getCalificacionesByGrupo(alumno.grupo_id).find(c => c.alumno_id === alumno.__backendId);
+         if(calif) message = `Hola ${alumno.nombre_completo}, te compartimos tus calificaciones del Módulo ${alumno.modulo}:\n\n📝 Parcial 1: ${calif.parcial_1}\n📝 Parcial 2: ${calif.parcial_2}\n📝 Parcial 3: ${calif.parcial_3}\n📝 Parcial 4: ${calif.parcial_4}\n\n🎯 *Promedio Final: ${calif.promedio}*\n📌 Estado: ${calif.estado}\n\n¡Excelente día!`;
+         else message = `Hola ${alumno.nombre_completo}, tus calificaciones aún no han sido registradas en el sistema para este módulo. Te avisaremos en cuanto estén listas.`;
+      }
+      window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`, '_blank');
+      closeWAModal();
+    }
+
+
+    function getAlumnos() { 
+        let alumnos = allData.filter(d => d.type === 'alumno'); 
+        if (currentUser?.role === 'maestro') {
+            const misGruposIds = getGrupos().map(g => g.__backendId);
+            alumnos = alumnos.filter(a => misGruposIds.includes(a.grupo_id));
+        }
+        return alumnos;
+    }
+    
+    function getMaestros() { return allData.filter(d => d.type === 'maestro'); }
+    
+    function getGrupos() { 
+        let grupos = allData.filter(d => d.type === 'grupo' && !d.ciclo_cerrado); 
+        if (currentUser?.role === 'maestro') {
+            grupos = grupos.filter(g => g.maestro_id === currentUser.id);
+        }
+        return grupos;
+    }
+    
+    function getGruposCerrados() { return allData.filter(d => d.type === 'grupo' && d.ciclo_cerrado); }
+    function getAlumnosByGrupo(grupoId) { return allData.filter(d => d.type === 'alumno' && d.grupo_id === grupoId); }
+
+    async function loadAllData() {
+      allData = await storage.getData();
+      if (currentUser?.role === 'alumno') {
+         renderMisCalificaciones();
+      } else {
+         updateStats(); updateGrupoSelects(); updateMaestroSelect(); updateHistorialSelect();
+         renderAlumnos(); renderMaestros(); renderGrupos(); renderListaPreview();
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('stat-alumnos').textContent = getAlumnos().length;
+      document.getElementById('stat-maestros').textContent = getMaestros().length;
+      document.getElementById('stat-grupos').textContent = getGrupos().length;
+    }
+
+    function updateGrupoSelects() {
+      const grupos = getGrupos();
+      const selects = [
+        document.getElementById('alumno-grupo'),
+        document.getElementById('lista-grupo-select')
+      ];
+
+      selects.forEach(select => {
+        if (!select) return;
+        const currentValue = select.value;
+        const isAlumnoSelect = select.id === 'alumno-grupo';
+        select.innerHTML = `<option value="">${isAlumnoSelect ? 'Selecciona un grupo' : 'Selecciona un grupo'}</option>`;
+        
+        grupos.forEach(grupo => {
+          const alumnosCount = getAlumnosByGrupo(grupo.__backendId).length;
+          const isFull = alumnosCount >= 25;
+          const option = document.createElement('option');
+          option.value = grupo.__backendId;
+          option.textContent = `${grupo.grupo_nombre} (${alumnosCount}/25)${isFull ? ' - LLENO' : ''}`;
+          
+          if (isAlumnoSelect && isFull) {
+             const isOwnGroup = editAlumnoId && allData.find(a => a.__backendId === editAlumnoId)?.grupo_id === grupo.__backendId;
+             if (!isOwnGroup) option.disabled = true;
+          }
+          select.appendChild(option);
         });
-        document.getElementById('daily-report-container').textContent = report;
+
+        if (currentValue && grupos.some(g => g.__backendId === currentValue)) {
+          select.value = currentValue;
+        }
+      });
     }
 
-    function generateWeeklyReport() {
-        const isAdmin = currentUser.role === 'admin';
-        const reportBranch = isAdmin ? 'GLOBAL (Todas las Sucursales)' : currentUser.branch;
-        
-        const allDaysData = [...state.weeklyHistory];
-        const visibleTodaySales = isAdmin ? state.salesHistory : state.salesHistory.filter(s => s.branch === currentUser.branch);
-        
-        if (visibleTodaySales.length > 0) { allDaysData.push({ date: new Date().toDateString(), sales: visibleTodaySales }); }
-        
-        const last7Days = allDaysData.slice(-7);
+    function updateMaestroSelect() {
+      const maestros = getMaestros();
+      const select = document.getElementById('grupo-maestro');
+      const currentValue = select.value;
+      select.innerHTML = '<option value="">Sin asignar</option>';
+      maestros.forEach(maestro => {
+        const option = document.createElement('option');
+        option.value = maestro.__backendId;
+        option.textContent = `${maestro.maestro_nombre} - ${maestro.maestro_especialidad}`;
+        select.appendChild(option);
+      });
+      if (currentValue && maestros.some(m => m.__backendId === currentValue)) { select.value = currentValue; }
+    }
 
-        if (last7Days.length === 0) { document.getElementById('weekly-report-container').textContent = "No hay datos registrados."; return; }
+    // ==========================================
+    // LÓGICA DE ALUMNOS
+    // ==========================================
+    function renderAlumnos() {
+      const tbody = document.getElementById('tabla-alumnos'); const alumnos = getAlumnos();
+      if (alumnos.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center text-gray-400">No hay alumnos registrados</td></tr>'; return; }
 
-        let totalSemanal = 0; let transaccionesTotales = 0;
-        let mejorDia = { nombre: '', total: -1 }; let peorDia = { nombre: '', total: Infinity };
-        const productSummary = {}; const branchSummary = {};
+      tbody.innerHTML = alumnos.map(alumno => {
+        const grupo = allData.find(d => d.__backendId === alumno.grupo_id);
+        const grupoNombre = grupo ? grupo.grupo_nombre : 'Sin grupo';
+        const isClosed = grupo && grupo.ciclo_cerrado;
+        const hasPhone = alumno.telefono && alumno.telefono.replace(/\D/g, '').length >= 10;
+        const whatsappClass = hasPhone ? 'text-green-500 hover:text-green-600 bg-green-50 cursor-pointer' : 'text-gray-300 bg-gray-50 cursor-not-allowed';
+        const waAction = hasPhone ? `onclick="openWAModal('${alumno.__backendId}')"` : `title="Sin teléfono registrado"`;
 
-        const reportDetails = last7Days.map(day => {
-            const daySales = isAdmin ? day.sales : day.sales.filter(s => s.branch === currentUser.branch);
-            const dayTotal = daySales.reduce((sum, s) => sum + s.total, 0);
-            const dayTrans = daySales.length;
-
-            if (dayTrans === 0) return null; 
-
-            totalSemanal += dayTotal; transaccionesTotales += dayTrans;
-            const dayDate = new Date(day.date);
-            const dayName = dayDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-
-            if (dayTotal > mejorDia.total) mejorDia = { nombre: dayName, total: dayTotal };
-            if (dayTotal < peorDia.total) peorDia = { nombre: dayName, total: dayTotal };
-
-            daySales.forEach(sale => {
-                if (isAdmin) {
-                    if (!branchSummary[sale.branch]) branchSummary[sale.branch] = { total: 0, count: 0 };
-                    branchSummary[sale.branch].total += sale.total; branchSummary[sale.branch].count++;
-                }
-                sale.items.forEach(item => {
-                    if (!productSummary[item.name]) productSummary[item.name] = { grams: 0, total: 0, emoji: item.emoji };
-                    productSummary[item.name].grams += item.grams; productSummary[item.name].total += item.total;
-                });
-            });
-
-            return { name: dayName, total: dayTotal, trans: dayTrans };
-        }).filter(Boolean); 
-
-        if (reportDetails.length === 0) { document.getElementById('weekly-report-container').textContent = "No hay ventas registradas."; return; }
-
-        const promTicket = transaccionesTotales > 0 ? (totalSemanal / transaccionesTotales) : 0;
-        const promDiario = totalSemanal / reportDetails.length;
-
-        let report = `╔════════════════════════════════════════════════════════════╗\n`;
-        report += `║              REPORTE SEMANAL DE RENDIMIENTO                ║\n`;
-        report += `╚════════════════════════════════════════════════════════════╝\n\n`;
-        report += `🏢 Negocio:   ${state.businessName}\n`;
-        report += `📍 Sucursal:  ${reportBranch}\n`;
-        report += `📅 Generado:  ${new Date().toLocaleDateString('es-MX')} a las ${new Date().toLocaleTimeString('es-MX')}\n`;
-        report += `👤 Solicitó:  ${currentUser.username}\n\n`;
-
-        report += `══════════════════════════════════════════════════════════════\n`;
-        report += `📊 RESUMEN EJECUTIVO\n`;
-        report += `══════════════════════════════════════════════════════════════\n`;
-        report += `💰 Ingreso Total:       $${totalSemanal.toFixed(2)}\n`;
-        report += `🧾 Transacciones:       ${transaccionesTotales} tickets\n`;
-        report += `📈 Promedio Diario:     $${promDiario.toFixed(2)} por día activo\n`;
-        report += `🎯 Ticket Promedio:     $${promTicket.toFixed(2)} por cliente\n\n`;
-        report += `🏆 Mejor Día:           ${mejorDia.nombre.padEnd(25)} -> $${mejorDia.total.toFixed(2)}\n`;
-        report += `📉 Día más bajo:        ${peorDia.nombre.padEnd(25)} -> $${peorDia.total.toFixed(2)}\n\n`;
-
-        if (isAdmin && Object.keys(branchSummary).length > 0) {
-            report += `══════════════════════════════════════════════════════════════\n`;
-            report += `🏢 DESGLOSE POR SUCURSAL\n`;
-            report += `══════════════════════════════════════════════════════════════\n`;
-            Object.entries(branchSummary).sort((a, b) => b[1].total - a[1].total).forEach(([branch, data]) => {
-                    const percentage = ((data.total / totalSemanal) * 100).toFixed(1);
-                    report += `  • ${branch.padEnd(16)} $${data.total.toFixed(2).padStart(8)} (${percentage}% del global) | ${data.count} ventas\n`;
-                });
-            report += `\n`;
+        let statusBadge = '';
+        if (isClosed) {
+            const calif = getCalificacionesByGrupo(alumno.grupo_id).find(c => c.alumno_id === alumno.__backendId);
+            if (calif && calif.estado === 'APROBADO') {
+                const nextMod = nextModuleMap[alumno.modulo] || 'Egresado';
+                statusBadge = `<div class="mt-2"><span class="px-2 py-1 text-[10px] font-semibold bg-blue-100 text-blue-800 rounded-full shadow-sm">🎓 Candidato a Módulo ${nextMod}</span></div>`;
+            } else if (calif && calif.estado === 'REPROBADO') {
+                statusBadge = `<div class="mt-2"><span class="px-2 py-1 text-[10px] font-semibold bg-orange-100 text-orange-800 rounded-full shadow-sm">🔄 Recursa Módulo ${alumno.modulo}</span></div>`;
+            } else {
+                statusBadge = `<div class="mt-2"><span class="px-2 py-1 text-[10px] font-semibold bg-gray-100 text-gray-800 rounded-full shadow-sm">⚠️ Sin Calificar</span></div>`;
+            }
         }
 
-        report += `══════════════════════════════════════════════════════════════\n`;
-        report += `📦 PRODUCTOS MÁS VENDIDOS\n`;
-        report += `══════════════════════════════════════════════════════════════\n`;
-        const topProducts = Object.entries(productSummary).sort((a, b) => b[1].total - a[1].total); 
-        topProducts.forEach(([name, data], index) => {
-            const kilos = (data.grams / 1000).toFixed(2);
-            report += `  ${String(index + 1).padStart(2, '0')}. ${data.emoji} ${name.padEnd(22)} ${kilos.padStart(6)} Kg  ->  $${data.total.toFixed(2)}\n`;
-        });
-        report += `\n`;
-
-        report += `══════════════════════════════════════════════════════════════\n`;
-        report += `📅 VENTAS DÍA POR DÍA\n`;
-        report += `══════════════════════════════════════════════════════════════\n`;
-        reportDetails.forEach(day => {
-            const nombreDia = day.name.charAt(0).toUpperCase() + day.name.slice(1);
-            report += `  🗓️ ${nombreDia.padEnd(30)}\n`;
-            report += `      Total: $${day.total.toFixed(2).padEnd(10)} | Tickets: ${day.trans}\n`;
-            report += `      --------------------------------------------------\n`;
-        });
-
-        report += `\n====================== FIN DEL REPORTE ======================\n`;
-
-        document.getElementById('weekly-report-container').textContent = report;
+        return `
+        <tr class="border-b border-gray-100 hover:bg-gray-50 ${editAlumnoId === alumno.__backendId ? 'bg-purple-50' : ''}">
+          <td class="py-3 px-4 text-sm text-gray-800 whitespace-nowrap">
+             ${alumno.nombre_completo}
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-600">
+             ${alumno.numero_control}
+             <div class="text-[10px] text-gray-400 mt-1">Pass: ${alumno.alumno_password || alumno.numero_control}</div>
+          </td>
+          <td class="py-3 px-4 text-sm text-gray-600">${alumno.carrera}</td>
+          <td class="py-3 px-4"><span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">${alumno.modulo}</span></td>
+          <td class="py-3 px-4 text-sm text-gray-600 leading-tight">
+             ${grupoNombre} ${isClosed ? '<span class="text-xs text-red-500 font-medium ml-1">(Cerrado)</span>' : ''} ${statusBadge}
+          </td>
+          <td class="py-3 px-4 flex justify-center items-center gap-2">
+            <button ${waAction} class="${whatsappClass} p-2 rounded" title="${hasPhone ? 'Opciones de WhatsApp' : 'Sin teléfono registrado'}">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+            </button>
+            ${isClosed ? `
+            <button onclick="reinscribirAlumnoBtn('${alumno.__backendId}')" class="text-purple-600 hover:text-purple-800 p-2 bg-purple-50 rounded" title="Reinscribir al siguiente Módulo">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
+            </button>` : `
+            <button onclick="editarAlumnoBtn('${alumno.__backendId}')" class="text-blue-500 hover:text-blue-700 p-2 bg-blue-50 rounded" title="Editar Alumno">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </button>`}
+            <button onclick="deleteAlumno('${alumno.__backendId}')" class="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded" title="Eliminar Alumno">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+          </td>
+        </tr>
+      `}).join('');
     }
 
-    function copyDailyReport() { navigator.clipboard.writeText(document.getElementById('daily-report-container').textContent); showToast('Copiado'); }
-    function copyWeeklyReport() { navigator.clipboard.writeText(document.getElementById('weekly-report-container').textContent); showToast('Copiado'); }
-
-    // Utilidades
-    function showToast(m, type = 'success') {
-      const t = document.getElementById('toast'); document.getElementById('toast-message').textContent = m;
-      t.className = `fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto px-5 sm:px-6 py-3 rounded-xl shadow-2xl transform transition-all duration-300 z-[300] text-center sm:text-left text-sm sm:text-base font-semibold ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} text-white`;
-      t.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 2500);
+    function editarAlumnoBtn(id) {
+      const alumno = allData.find(d => d.__backendId === id);
+      if (!alumno) return;
+      editAlumnoId = id; isReinscripcion = false;
+      document.getElementById('alumno-nombre').value = alumno.nombre_completo;
+      document.getElementById('alumno-control').value = alumno.numero_control;
+      document.getElementById('alumno-carrera').value = alumno.carrera;
+      document.getElementById('alumno-modalidad').value = alumno.modalidad;
+      document.getElementById('alumno-modulo').value = alumno.modulo;
+      document.getElementById('alumno-telefono').value = alumno.telefono || '';
+      document.getElementById('alumno-password').value = alumno.alumno_password || ''; // Cargar Password
+      
+      updateGrupoSelects();
+      const selectGrupo = document.getElementById('alumno-grupo');
+      if(Array.from(selectGrupo.options).some(opt => opt.value === alumno.grupo_id)) { selectGrupo.value = alumno.grupo_id; }
+      
+      document.getElementById('titulo-form-alumno').innerHTML = `<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Editando Alumno`;
+      document.getElementById('texto-btn-alumno').textContent = 'Guardar Cambios';
+      document.getElementById('icono-btn-alumno').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+      document.getElementById('btn-cancelar-edicion-alumno').classList.remove('hidden');
+      document.getElementById('section-alumnos').scrollIntoView({ behavior: 'smooth' });
+      renderAlumnos();
     }
-    function updateClock() { document.getElementById('current-date').textContent = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('current-time').textContent = new Date().toLocaleTimeString('es-MX'); }
 
-    // INICIO
-    async function init() { await loadState(); setInterval(updateClock, 1000); updateClock(); checkAuth(); }
-    document.addEventListener('DOMContentLoaded', init);
+    function reinscribirAlumnoBtn(id) {
+      const alumno = allData.find(d => d.__backendId === id);
+      if (!alumno) return;
+      editAlumnoId = id; isReinscripcion = true;
+      const calif = getCalificacionesByGrupo(alumno.grupo_id).find(c => c.alumno_id === id);
+      let sugerenciaModulo = alumno.modulo;
+      if (calif && calif.estado === 'APROBADO') { sugerenciaModulo = nextModuleMap[alumno.modulo] || 'Egresado'; }
+      
+      document.getElementById('alumno-nombre').value = alumno.nombre_completo;
+      document.getElementById('alumno-control').value = alumno.numero_control;
+      document.getElementById('alumno-carrera').value = alumno.carrera;
+      document.getElementById('alumno-modalidad').value = alumno.modalidad;
+      document.getElementById('alumno-telefono').value = alumno.telefono || '';
+      document.getElementById('alumno-password').value = alumno.alumno_password || ''; 
+      
+      if (sugerenciaModulo !== 'Egresado') { document.getElementById('alumno-modulo').value = sugerenciaModulo; }
+      
+      updateGrupoSelects();
+      document.getElementById('alumno-grupo').value = ""; 
+      document.getElementById('titulo-form-alumno').innerHTML = `<svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg> Reinscribiendo Alumno`;
+      document.getElementById('texto-btn-alumno').textContent = 'Confirmar Reinscripción';
+      document.getElementById('icono-btn-alumno').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+      document.getElementById('btn-cancelar-edicion-alumno').classList.remove('hidden');
+      document.getElementById('section-alumnos').scrollIntoView({ behavior: 'smooth' });
+      renderAlumnos();
+    }
+
+    function cancelarEdicionAlumno() {
+      editAlumnoId = null; isReinscripcion = false; document.getElementById('form-alumno').reset();
+      document.getElementById('titulo-form-alumno').innerHTML = `<svg class="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg> Registrar Nuevo Alumno`;
+      document.getElementById('texto-btn-alumno').textContent = 'Registrar Alumno';
+      document.getElementById('icono-btn-alumno').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+      document.getElementById('btn-cancelar-edicion-alumno').classList.add('hidden');
+      updateGrupoSelects(); renderAlumnos();
+    }
+
+    document.getElementById('form-alumno').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const grupoId = document.getElementById('alumno-grupo').value;
+      const grupo = allData.find(d => d.__backendId === grupoId);
+      if (!grupo) { showToast('Por favor selecciona un grupo válido', 'error'); return; }
+      
+      const alumnosInGrupo = getAlumnosByGrupo(grupoId);
+      const isSameGroup = editAlumnoId && allData.find(a => a.__backendId === editAlumnoId)?.grupo_id === grupoId;
+
+      if (!isSameGroup && alumnosInGrupo.length >= 25) { showToast('Este grupo ya está lleno (25 alumnos)', 'error'); return; }
+
+      const btn = document.getElementById('btn-registrar-alumno');
+      btn.disabled = true; const originalBtnHtml = btn.innerHTML;
+      btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Procesando...</span>';
+
+      if (editAlumnoId) {
+        const alumnoToUpdate = allData.find(a => a.__backendId === editAlumnoId);
+        if(alumnoToUpdate) {
+           alumnoToUpdate.nombre_completo = document.getElementById('alumno-nombre').value;
+           alumnoToUpdate.numero_control = document.getElementById('alumno-control').value;
+           alumnoToUpdate.carrera = document.getElementById('alumno-carrera').value;
+           alumnoToUpdate.modalidad = document.getElementById('alumno-modalidad').value;
+           alumnoToUpdate.modulo = document.getElementById('alumno-modulo').value;
+           alumnoToUpdate.telefono = document.getElementById('alumno-telefono').value;
+           alumnoToUpdate.alumno_password = document.getElementById('alumno-password').value; // Guardar Password Editado
+           alumnoToUpdate.grupo_id = grupoId;
+           alumnoToUpdate.grupo_nombre = grupo.grupo_nombre;
+
+           await storage.updateRecord(alumnoToUpdate);
+           showToast(isReinscripcion ? 'Alumno reinscrito correctamente' : 'Alumno actualizado correctamente');
+        }
+        btn.innerHTML = originalBtnHtml; cancelarEdicionAlumno(); 
+      } else {
+        const alumno = {
+          type: 'alumno', 
+          nombre_completo: document.getElementById('alumno-nombre').value, 
+          numero_control: document.getElementById('alumno-control').value, 
+          carrera: document.getElementById('alumno-carrera').value, 
+          modalidad: document.getElementById('alumno-modalidad').value, 
+          modulo: document.getElementById('alumno-modulo').value, 
+          telefono: document.getElementById('alumno-telefono').value, 
+          alumno_password: document.getElementById('alumno-password').value, // Guardar nuevo Password
+          grupo_id: grupoId, 
+          grupo_nombre: grupo.grupo_nombre, 
+          created_at: new Date().toISOString()
+        };
+        await storage.addRecord(alumno);
+        showToast('Alumno registrado correctamente');
+        btn.innerHTML = originalBtnHtml; e.target.reset();
+      }
+      await loadAllData();
+      btn.disabled = false;
+    });
+
+    // ==========================================
+    // LÓGICA DE MAESTROS
+    // ==========================================
+    function renderMaestros() {
+      const container = document.getElementById('lista-maestros'); const maestros = getMaestros();
+      if (maestros.length === 0) { container.innerHTML = '<div class="text-center text-gray-400 py-8 col-span-full">No hay maestros registrados</div>'; return; }
+      
+      container.innerHTML = maestros.map(maestro => `
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 card-hover ${editMaestroId === maestro.__backendId ? 'border-blue-400 bg-blue-50' : ''}">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3 w-3/4">
+              <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              </div>
+              <div class="overflow-hidden">
+                <h4 class="font-semibold text-gray-800 truncate">${maestro.maestro_nombre}</h4>
+                <p class="text-sm text-gray-500 truncate">${maestro.maestro_especialidad}</p>
+                <p class="text-xs text-gray-400 mt-1 truncate">Pass: ${maestro.maestro_password || '12345'}</p>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 flex-shrink-0">
+              <button onclick="editarMaestroBtn('${maestro.__backendId}')" class="text-blue-500 hover:text-blue-700 p-2 bg-white rounded shadow-sm" title="Editar Maestro">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+              </button>
+              <button onclick="deleteMaestro('${maestro.__backendId}')" class="text-red-500 hover:text-red-700 p-2 bg-white rounded shadow-sm" title="Eliminar Maestro">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function editarMaestroBtn(id) {
+      const maestro = allData.find(d => d.__backendId === id);
+      if (!maestro) return;
+      
+      editMaestroId = id;
+      document.getElementById('maestro-nombre').value = maestro.maestro_nombre;
+      document.getElementById('maestro-especialidad').value = maestro.maestro_especialidad;
+      document.getElementById('maestro-password').value = maestro.maestro_password || '';
+
+      document.getElementById('titulo-form-maestro').innerHTML = `<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Editando Maestro`;
+      document.getElementById('texto-btn-maestro').textContent = 'Guardar Cambios';
+      document.getElementById('icono-btn-maestro').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>';
+      document.getElementById('btn-cancelar-edicion-maestro').classList.remove('hidden');
+      document.getElementById('section-maestros').scrollIntoView({ behavior: 'smooth' });
+      renderMaestros();
+    }
+
+    function cancelarEdicionMaestro() {
+      editMaestroId = null; 
+      document.getElementById('form-maestro').reset();
+      document.getElementById('titulo-form-maestro').innerHTML = `<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg> Registrar Nuevo Maestro`;
+      document.getElementById('texto-btn-maestro').textContent = 'Registrar Maestro';
+      document.getElementById('icono-btn-maestro').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>';
+      document.getElementById('btn-cancelar-edicion-maestro').classList.add('hidden');
+      renderMaestros();
+    }
+
+    document.getElementById('form-maestro').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-registrar-maestro'); 
+      btn.disabled = true; 
+      const originalBtnHtml = btn.innerHTML;
+      btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Procesando...';
+      
+      if (editMaestroId) {
+         const maestroToUpdate = allData.find(m => m.__backendId === editMaestroId);
+         if(maestroToUpdate) {
+             maestroToUpdate.maestro_nombre = document.getElementById('maestro-nombre').value;
+             maestroToUpdate.maestro_especialidad = document.getElementById('maestro-especialidad').value;
+             maestroToUpdate.maestro_password = document.getElementById('maestro-password').value;
+             await storage.updateRecord(maestroToUpdate);
+             showToast('Maestro actualizado correctamente');
+         }
+         btn.innerHTML = originalBtnHtml; 
+         cancelarEdicionMaestro(); 
+      } else {
+          const maestro = { 
+              type: 'maestro', 
+              maestro_nombre: document.getElementById('maestro-nombre').value, 
+              maestro_especialidad: document.getElementById('maestro-especialidad').value, 
+              maestro_password: document.getElementById('maestro-password').value, 
+              created_at: new Date().toISOString() 
+          };
+          await storage.addRecord(maestro); 
+          showToast('Maestro registrado correctamente'); 
+          btn.innerHTML = originalBtnHtml;
+          e.target.reset();
+      }
+      
+      await loadAllData();
+      btn.disabled = false;
+    });
+
+    function deleteMaestro(id) {
+      const maestro = allData.find(d => d.__backendId === id); if (!maestro) return;
+      showConfirmModal('Eliminar Maestro', `¿Estás seguro de eliminar al maestro "${maestro.maestro_nombre}"?`, 'Eliminar', 'bg-red-600 hover:bg-red-700', async () => {
+        await storage.deleteRecord(id); 
+        if(editMaestroId === id) cancelarEdicionMaestro();
+        await loadAllData(); 
+        showToast('Maestro eliminado correctamente');
+      });
+    }
+
+    // ==========================================
+    // LÓGICA DE GRUPOS
+    // ==========================================
+    function renderGrupos() {
+      const container = document.getElementById('lista-grupos'); const grupos = getGrupos(); 
+      if (grupos.length === 0) { container.innerHTML = '<div class="text-center text-gray-400 py-8 col-span-full">No hay grupos activos creados</div>'; return; }
+      container.innerHTML = grupos.map(grupo => {
+        const alumnosCount = getAlumnosByGrupo(grupo.__backendId).length; const isFull = alumnosCount >= 25; const maestro = allData.find(d => d.__backendId === grupo.maestro_id);
+        return `
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 card-hover">
+            <div class="flex items-start justify-between mb-3">
+              <div class="w-3/4">
+                <h4 class="font-semibold text-gray-800 truncate">${grupo.grupo_nombre}</h4>
+                <p class="text-sm text-gray-500 truncate">Módulo ${grupo.modulo} | Periodo: ${grupo.periodo || 'Sin asignar'}</p>
+              </div>
+              <div class="flex gap-2 flex-shrink-0">
+                <button onclick="confirmarCerrarCiclo('${grupo.__backendId}')" class="text-blue-500 hover:text-blue-700 bg-blue-100 hover:bg-blue-200 rounded p-2 transition" title="Cerrar Ciclo Escolar">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+                </button>
+                <button onclick="deleteGrupo('${grupo.__backendId}')" class="text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 rounded p-2 transition" title="Eliminar Grupo">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <span class="text-gray-600 truncate">${maestro ? maestro.maestro_nombre : 'Sin maestro asignado'}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-gray-200 rounded-full h-2"><div class="h-2 rounded-full ${isFull ? 'bg-red-500' : alumnosCount > 20 ? 'bg-yellow-500' : 'bg-green-500'}" style="width: ${(alumnosCount / 25) * 100}%"></div></div>
+                <span class="text-sm font-medium ${isFull ? 'text-red-600' : 'text-gray-600'} flex-shrink-0">${alumnosCount}/25</span>
+              </div>
+              ${isFull ? '<span class="inline-block px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">GRUPO COMPLETO</span>' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('form-grupo').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-crear-grupo'); btn.disabled = true; btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Creando...';
+      const maestroId = document.getElementById('grupo-maestro').value;
+      const grupo = { type: 'grupo', grupo_nombre: document.getElementById('grupo-nombre').value, modulo: document.getElementById('grupo-modulo').value, maestro_id: maestroId || null, periodo: document.getElementById('grupo-periodo').value, ciclo_cerrado: false, created_at: new Date().toISOString() };
+      await storage.addRecord(grupo); await loadAllData();
+      btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg> Crear Grupo';
+      showToast('Grupo creado correctamente'); e.target.reset();
+    });
+
+    function deleteGrupo(id) {
+      const grupo = allData.find(d => d.__backendId === id); if (!grupo) return;
+      const alumnosInGrupo = getAlumnosByGrupo(id);
+      if (alumnosInGrupo.length > 0) { showToast(`No se puede eliminar el grupo porque tiene ${alumnosInGrupo.length} alumno(s) asignado(s)`, 'error'); return; }
+      showConfirmModal('Eliminar Grupo', `¿Estás seguro de eliminar el grupo "${grupo.grupo_nombre}"?`, 'Eliminar', 'bg-red-600 hover:bg-red-700', async () => {
+        await storage.deleteRecord(id); await loadAllData(); showToast('Grupo eliminado correctamente');
+      });
+    }
+
+    function confirmarCerrarCiclo(id) {
+      const grupo = allData.find(d => d.__backendId === id);
+      if (!grupo) return;
+      showConfirmModal('Cerrar Ciclo Escolar', `¿Estás seguro de cerrar el ciclo del grupo "${grupo.grupo_nombre}"? Este grupo pasará al Historial y sus calificaciones se congelarán.`, 'Cerrar Ciclo', 'bg-blue-600 hover:bg-blue-700', () => cerrarCicloGrupo(id));
+    }
+
+    async function cerrarCicloGrupo(id) {
+      const grupo = allData.find(d => d.__backendId === id);
+      if (grupo) {
+        const alumnos = getAlumnosByGrupo(id);
+        for (let alumno of alumnos) {
+           const hasGrade = allData.find(d => d.type === 'calificacion' && d.alumno_id === alumno.__backendId && d.grupo_id === id);
+           if (!hasGrade) {
+              await storage.addRecord({ type: 'calificacion', alumno_id: alumno.__backendId, grupo_id: id, nombre_completo: alumno.nombre_completo, numero_control: alumno.numero_control, grupo_nombre: grupo.grupo_nombre, parcial_1: '-', parcial_2: '-', parcial_3: '-', parcial_4: '-', promedio: '-', estado: 'SIN CALIFICAR', created_at: new Date().toISOString() });
+           }
+        }
+        grupo.ciclo_cerrado = true;
+        await storage.updateRecord(grupo);
+        await loadAllData();
+        showToast('Ciclo cerrado y listado de candidatos actualizado', 'success');
+        showSection('historial');
+        setTimeout(() => { const select = document.getElementById('historial-grupo-select'); select.value = id; select.dispatchEvent(new Event('change')); }, 200);
+      }
+    }
+
+    function confirmarReabrirGrupo(id) {
+      const grupo = allData.find(d => d.__backendId === id);
+      if (!grupo) return;
+      showConfirmModal('Reabrir Grupo', `¿Estás seguro de reabrir el grupo "${grupo.grupo_nombre}"? Volverá a aparecer en las listas activas.`, 'Reabrir Grupo', 'bg-green-600 hover:bg-green-700', () => reabrirGrupo(id));
+    }
+
+    async function reabrirGrupo(id) {
+      const grupo = allData.find(d => d.__backendId === id);
+      if (grupo) {
+        grupo.ciclo_cerrado = false;
+        await storage.updateRecord(grupo);
+        await loadAllData();
+        showToast('El grupo ha sido reabierto exitosamente', 'success');
+        document.getElementById('historial-grupo-select').value = '';
+        document.getElementById('historial-content').classList.add('hidden');
+        document.getElementById('historial-empty').classList.remove('hidden');
+        showSection('grupos');
+      }
+    }
+
+    function updateHistorialSelect() {
+      const gruposCerrados = getGruposCerrados(); const select = document.getElementById('historial-grupo-select'); const currentValue = select.value;
+      select.innerHTML = '<option value="">Selecciona un grupo</option>';
+      gruposCerrados.forEach(grupo => {
+        const option = document.createElement('option'); option.value = grupo.__backendId; option.textContent = `${grupo.grupo_nombre} (${grupo.periodo || 'Sin periodo'}) - Cerrado`; select.appendChild(option);
+      });
+      if (currentValue && gruposCerrados.some(g => g.__backendId === currentValue)) { select.value = currentValue; }
+    }
+
+    document.getElementById('historial-grupo-select').addEventListener('change', function() {
+      const grupoId = this.value; const contentDiv = document.getElementById('historial-content'); const emptyDiv = document.getElementById('historial-empty'); const tbody = document.getElementById('historial-alumnos-body'); const btnReabrir = document.getElementById('btn-reabrir-grupo');
+      if (!grupoId) { contentDiv.classList.add('hidden'); emptyDiv.classList.remove('hidden'); return; }
+
+      const grupo = allData.find(d => d.__backendId === grupoId);
+      const maestro = allData.find(d => d.__backendId === grupo?.maestro_id);
+      const calificaciones = getCalificacionesByGrupo(grupoId);
+
+      document.getElementById('historial-grupo-titulo').textContent = grupo.grupo_nombre;
+      document.getElementById('historial-grupo-info').textContent = `Módulo ${grupo.modulo} | Periodo: ${grupo.periodo || 'Sin asignar'} | Maestro: ${maestro ? maestro.maestro_nombre : 'Sin asignar'} | Total Alumnos: ${calificaciones.length}`;
+
+      btnReabrir.onclick = () => confirmarReabrirGrupo(grupoId);
+      
+      if (currentUser.role === 'admin') { btnReabrir.classList.remove('hidden'); } else { btnReabrir.classList.add('hidden'); }
+
+      if (calificaciones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-gray-400">Este grupo se cerró sin alumnos</td></tr>';
+      } else {
+        tbody.innerHTML = calificaciones.map(calif => {
+          const p1 = calif?.parcial_1 ?? '-'; const p2 = calif?.parcial_2 ?? '-'; const p3 = calif?.parcial_3 ?? '-'; const p4 = calif?.parcial_4 ?? '-'; const promedio = calif?.promedio ?? '-'; const estado = calif?.estado ?? 'SIN CALIFICAR';
+          const estadoClass = estado === 'APROBADO' ? 'bg-green-100 text-green-700' : estado === 'REPROBADO' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700';
+          return `
+            <tr class="border-b border-gray-200 hover:bg-white transition">
+              <td class="py-3 px-4 text-sm text-gray-800 font-medium whitespace-nowrap">${calif.nombre_completo} <span class="block text-xs text-gray-500 font-normal">No. ${calif.numero_control}</span></td>
+              <td class="py-3 px-4 text-center text-sm text-gray-600">${p1}</td>
+              <td class="py-3 px-4 text-center text-sm text-gray-600">${p2}</td>
+              <td class="py-3 px-4 text-center text-sm text-gray-600">${p3}</td>
+              <td class="py-3 px-4 text-center text-sm text-gray-600">${p4}</td>
+              <td class="py-3 px-4 text-center text-sm font-bold text-gray-800">${promedio}</td>
+              <td class="py-3 px-4 text-center"><span class="px-3 py-1 text-xs font-semibold rounded-full ${estadoClass}">${estado}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+      contentDiv.classList.remove('hidden'); emptyDiv.classList.add('hidden');
+    });
+
+    function renderListaPreview() {
+      const grupoId = document.getElementById('lista-grupo-select').value;
+      const previewDiv = document.getElementById('lista-preview'); const emptyDiv = document.getElementById('lista-empty');
+      if (!grupoId) { previewDiv.classList.add('hidden'); emptyDiv.classList.remove('hidden'); return; }
+
+      const grupo = allData.find(d => d.__backendId === grupoId); const alumnos = getAlumnosByGrupo(grupoId); const maestro = allData.find(d => d.__backendId === grupo?.maestro_id);
+
+      if (grupo) {
+        document.getElementById('lista-grupo-titulo').textContent = grupo.grupo_nombre;
+        document.getElementById('lista-grupo-info').textContent = `Módulo ${grupo.modulo} | Periodo: ${grupo.periodo || 'Sin asignar'} | Maestro: ${maestro ? maestro.maestro_nombre : 'Sin asignar'} | ${alumnos.length} alumnos`;
+        const tbody = document.getElementById('lista-alumnos-body');
+        if (alumnos.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">No hay alumnos en este grupo</td></tr>';
+        } else {
+          tbody.innerHTML = alumnos.map((alumno, idx) => `
+            <tr class="border-b border-gray-200">
+              <td class="py-2 px-3 text-sm text-gray-600">${idx + 1}</td>
+              <td class="py-2 px-3 text-sm text-gray-800 font-medium whitespace-nowrap">${alumno.nombre_completo}</td>
+              <td class="py-2 px-3 text-sm text-gray-600">${alumno.numero_control}</td>
+              <td class="py-2 px-3 text-sm text-gray-600">${alumno.carrera}</td>
+              <td class="py-2 px-3 text-sm text-gray-600">${alumno.modalidad}</td>
+            </tr>
+          `).join('');
+        }
+        previewDiv.classList.remove('hidden'); emptyDiv.classList.add('hidden');
+      }
+    }
+
+    // ==========================================
+    // CAPTURA DE CALIFICACIONES
+    // ==========================================
+    function getCalificacionesByGrupo(grupoId) { return allData.filter(d => d.type === 'calificacion' && d.grupo_id === grupoId); }
+
+    function actualizarSelectsCalificaciones() {
+      const grupos = getGrupos(); 
+      const selectGrupo = document.getElementById('calif-grupo'); const selectGrupoView = document.getElementById('calif-grupo-view'); const selectBoleta = document.getElementById('boleta-grupo-select');
+      const valGrupo = selectGrupo.value; const valView = selectGrupoView.value; const valBoleta = selectBoleta.value;
+
+      selectGrupo.innerHTML = '<option value="">Selecciona un grupo</option>'; selectGrupoView.innerHTML = '<option value="">Selecciona un grupo</option>'; selectBoleta.innerHTML = '<option value="">Selecciona un grupo</option>';
+
+      grupos.forEach(grupo => {
+        const option1 = document.createElement('option'); option1.value = grupo.__backendId; option1.textContent = grupo.grupo_nombre; selectGrupo.appendChild(option1);
+        const option2 = document.createElement('option'); option2.value = grupo.__backendId; option2.textContent = grupo.grupo_nombre; selectGrupoView.appendChild(option2);
+        const option3 = document.createElement('option'); option3.value = grupo.__backendId; option3.textContent = grupo.grupo_nombre; selectBoleta.appendChild(option3);
+      });
+
+      if (valGrupo && grupos.some(g => g.__backendId === valGrupo)) selectGrupo.value = valGrupo;
+      if (valView && grupos.some(g => g.__backendId === valView)) selectGrupoView.value = valView;
+      if (valBoleta && grupos.some(g => g.__backendId === valBoleta)) selectBoleta.value = valBoleta;
+    }
+
+    document.getElementById('calif-grupo').addEventListener('change', function() {
+      const grupoId = this.value; const selectAlumno = document.getElementById('calif-alumno');
+      selectAlumno.innerHTML = '<option value="">Selecciona un alumno</option>';
+      if (!grupoId) return;
+      const alumnos = getAlumnosByGrupo(grupoId);
+      alumnos.forEach(alumno => {
+        const option = document.createElement('option'); option.value = alumno.__backendId; option.textContent = alumno.nombre_completo; selectAlumno.appendChild(option);
+      });
+    });
+
+    function limpiarFormularioCalificaciones() {
+      document.getElementById('form-calificaciones').reset(); document.getElementById('calif-alumno').innerHTML = '<option value="">Primero selecciona un grupo</option>'; document.getElementById('calif-parcial1').focus();
+    }
+
+    document.getElementById('form-calificaciones').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const grupoId = document.getElementById('calif-grupo').value; const alumnoId = document.getElementById('calif-alumno').value;
+      const parcial1 = parseFloat(document.getElementById('calif-parcial1').value); const parcial2 = parseFloat(document.getElementById('calif-parcial2').value); const parcial3 = parseFloat(document.getElementById('calif-parcial3').value); const parcial4 = parseFloat(document.getElementById('calif-parcial4').value);
+
+      if (!grupoId || !alumnoId) { showToast('Por favor completa todos los campos', 'error'); return; }
+
+      const alumno = allData.find(d => d.__backendId === alumnoId); const grupo = allData.find(d => d.__backendId === grupoId);
+      const promedio = ((parcial1 + parcial2 + parcial3 + parcial4) / 4).toFixed(2); const estado = promedio >= 70 ? 'APROBADO' : 'REPROBADO';
+
+      const calificacionExistente = allData.find(d => d.type === 'calificacion' && d.alumno_id === alumnoId && d.grupo_id === grupoId);
+      const btn = document.getElementById('btn-guardar-calificacion');
+      btn.disabled = true; btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Guardando...';
+
+      if (calificacionExistente) {
+        const calificacionActualizada = { ...calificacionExistente, parcial_1: parcial1, parcial_2: parcial2, parcial_3: parcial3, parcial_4: parcial4, promedio: parseFloat(promedio), estado: estado };
+        await storage.updateRecord(calificacionActualizada);
+      } else {
+        const calificacion = { type: 'calificacion', alumno_id: alumnoId, grupo_id: grupoId, nombre_completo: alumno.nombre_completo, numero_control: alumno.numero_control, grupo_nombre: grupo.grupo_nombre, parcial_1: parcial1, parcial_2: parcial2, parcial_3: parcial3, parcial_4: parcial4, promedio: parseFloat(promedio), estado: estado, created_at: new Date().toISOString() };
+        await storage.addRecord(calificacion);
+      }
+
+      await loadAllData();
+      btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Guardar';
+      showToast('Calificación guardada correctamente');
+      limpiarFormularioCalificaciones(); actualizarEstadisticasCalificaciones(); renderTablaCalificaciones(); renderAlumnos(); 
+    });
+
+    function renderTablaCalificaciones() {
+      const grupoId = document.getElementById('calif-grupo-view').value;
+      const tbody = document.getElementById('tabla-calificaciones');
+      if (!grupoId) { tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400">Selecciona un grupo para ver las calificaciones</td></tr>'; return; }
+      
+      const calificaciones = getCalificacionesByGrupo(grupoId);
+      const alumnos = getAlumnosByGrupo(grupoId);
+      
+      if (alumnos.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400">No hay alumnos en este grupo</td></tr>'; return; }
+      
+      tbody.innerHTML = alumnos.map(alumno => {
+        const calif = calificaciones.find(c => c.alumno_id === alumno.__backendId);
+        const p1 = calif?.parcial_1 ?? '-'; const p2 = calif?.parcial_2 ?? '-'; const p3 = calif?.parcial_3 ?? '-'; const p4 = calif?.parcial_4 ?? '-'; const promedio = calif?.promedio ?? '-'; const estado = calif?.estado ?? 'SIN CALIFICAR';
+        const estadoClass = estado === 'APROBADO' ? 'bg-green-100 text-green-700' : estado === 'REPROBADO' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700';
+        
+        let editBtn = '';
+        if (currentUser.role === 'admin') {
+            editBtn = calif ? `<button onclick="editarCalificacion('${calif.__backendId}')" class="text-indigo-500 hover:text-indigo-700 p-2 bg-indigo-50 rounded"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>` : '-';
+        }
+
+        return `
+          <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-3 px-4 text-sm text-gray-800 font-medium whitespace-nowrap">${alumno.nombre_completo}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p1}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p2}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p3}</td>
+            <td class="py-3 px-4 text-center text-sm text-gray-600">${p4}</td>
+            <td class="py-3 px-4 text-center text-sm font-semibold text-gray-800">${promedio}</td>
+            <td class="py-3 px-4 text-center"><span class="px-3 py-1 text-xs font-semibold rounded-full ${estadoClass}">${estado}</span></td>
+            ${currentUser.role === 'admin' ? `<td class="py-3 px-4 text-center">${editBtn}</td>` : ''}
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function actualizarEstadisticasCalificaciones() {
+      const grupoId = document.getElementById('calif-grupo-view').value;
+      if (!grupoId) { document.getElementById('stat-aprobacion').textContent = '0%'; document.getElementById('stat-reprobacion').textContent = '0%'; document.getElementById('stat-promedio-grupo').textContent = '0.0'; return; }
+      
+      const calificaciones = getCalificacionesByGrupo(grupoId);
+      if (calificaciones.length === 0) { document.getElementById('stat-aprobacion').textContent = '0%'; document.getElementById('stat-reprobacion').textContent = '0%'; document.getElementById('stat-promedio-grupo').textContent = '0.0'; return; }
+      
+      const aprobados = calificaciones.filter(c => c.estado === 'APROBADO').length;
+      const reprobados = calificaciones.filter(c => c.estado === 'REPROBADO').length;
+      const porcentajeAprobacion = ((aprobados / calificaciones.length) * 100).toFixed(1);
+      const porcentajeReprobacion = ((reprobados / calificaciones.length) * 100).toFixed(1);
+      const promedioGrupo = (calificaciones.reduce((sum, c) => sum + parseFloat(c.promedio || 0), 0) / calificaciones.length).toFixed(2);
+      
+      document.getElementById('stat-aprobacion').textContent = porcentajeAprobacion + '%';
+      document.getElementById('stat-reprobacion').textContent = porcentajeReprobacion + '%';
+      document.getElementById('stat-promedio-grupo').textContent = promedioGrupo;
+    }
+
+    document.getElementById('calif-grupo-view').addEventListener('change', function() { renderTablaCalificaciones(); actualizarEstadisticasCalificaciones(); });
+
+    document.getElementById('lista-grupo-select').addEventListener('change', renderListaPreview);
+
+    function editarCalificacion(calificacionId) {
+      const calif = allData.find(d => d.__backendId === calificacionId);
+      if (!calif) return;
+      document.getElementById('calif-grupo').value = calif.grupo_id;
+      document.getElementById('calif-grupo').dispatchEvent(new Event('change'));
+      setTimeout(() => {
+        document.getElementById('calif-alumno').value = calif.alumno_id; document.getElementById('calif-parcial1').value = calif.parcial_1; document.getElementById('calif-parcial2').value = calif.parcial_2; document.getElementById('calif-parcial3').value = calif.parcial_3; document.getElementById('calif-parcial4').value = calif.parcial_4; document.getElementById('calif-parcial1').focus();
+      }, 100);
+    }
+
+    // Exportaciones PDF y Excel
+    function descargarListaExcel() {
+      const grupoId = document.getElementById('lista-grupo-select').value; if (!grupoId) return;
+      const grupo = allData.find(d => d.__backendId === grupoId); const alumnos = getAlumnosByGrupo(grupoId);
+      const dataParaExcel = alumnos.map((a, i) => ({ 'No.': i + 1, 'Nombre del Alumno': a.nombre_completo, 'No. de Control': a.numero_control, 'Carrera': a.carrera, 'Modalidad': a.modalidad, 'Teléfono': a.telefono || 'N/A' }));
+      const wb = XLSX.utils.book_new(); const ws = XLSX.utils.json_to_sheet(dataParaExcel);
+      ws['!cols'] = [ { wch: 5 }, { wch: 35 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 15 } ];
+      XLSX.utils.book_append_sheet(wb, ws, "Lista de Alumnos");
+      XLSX.writeFile(wb, `Lista_${grupo.grupo_nombre.replace(/\s+/g, '_')}.xlsx`); showToast('Excel descargado correctamente');
+    }
+
+    function dibujarEncabezadoTecNM(doc) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(COLOR_AZUL_TECNM[0], COLOR_AZUL_TECNM[1], COLOR_AZUL_TECNM[2]); doc.text("TECNOLÓGICO NACIONAL DE MÉXICO", 105, 20, { align: 'center' });
+      doc.setFontSize(14); doc.text("Campus Comitán", 105, 28, { align: 'center' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(100); doc.text("Centro de Idiomas", 105, 36, { align: 'center' });
+    }
+
+    function descargarListaPDF() {
+      const grupoId = document.getElementById('lista-grupo-select').value; if (!grupoId) return;
+      const grupo = allData.find(d => d.__backendId === grupoId); const alumnos = getAlumnosByGrupo(grupoId); const maestro = allData.find(d => d.__backendId === grupo?.maestro_id);
+      const { jsPDF } = window.jspdf; const doc = new jsPDF();
+      dibujarEncabezadoTecNM(doc);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0); doc.text("Lista Oficial de Alumnos", 14, 50);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(`Grupo: ${grupo.grupo_nombre} | Módulo: ${grupo.modulo}`, 14, 57); doc.text(`Periodo: ${grupo.periodo || 'N/A'} | Maestro: ${maestro ? maestro.maestro_nombre : 'Sin asignar'}`, 14, 63);
+      doc.autoTable({ startY: 70, head: [['#', 'Nombre Completo', 'No. Control', 'Carrera', 'Modalidad']], body: alumnos.map((a, i) => [i + 1, a.nombre_completo, a.numero_control, a.carrera, a.modalidad]), theme: 'grid', headStyles: { fillColor: COLOR_AZUL_TECNM, textColor: 255 }, styles: { fontSize: 9, cellPadding: 3 } });
+      doc.save(`Lista_${grupo.grupo_nombre.replace(/\s+/g, '_')}.pdf`); showToast('PDF descargado correctamente');
+    }
+
+    function descargarBoletaPDFReal(origen = 'activo') {
+      let grupoId = origen === 'activo' ? document.getElementById('boleta-grupo-select').value : document.getElementById('historial-grupo-select').value;
+      if (!grupoId) { showToast('Por favor selecciona un grupo', 'error'); return; }
+
+      const grupo = allData.find(d => d.__backendId === grupoId);
+      const calificaciones = getCalificacionesByGrupo(grupoId);
+      const maestro = allData.find(d => d.__backendId === grupo?.maestro_id);
+
+      const { jsPDF } = window.jspdf; const doc = new jsPDF();
+      dibujarEncabezadoTecNM(doc);
+
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(0); doc.text("Boleta de Calificaciones Oficial", 14, 50);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(`Grupo: ${grupo.grupo_nombre} | Módulo: ${grupo.modulo}`, 14, 57); doc.text(`Periodo: ${grupo.periodo || 'N/A'} | Maestro: ${maestro ? maestro.maestro_nombre : 'Sin asignar'}`, 14, 63);
+
+      let aprobados = 0, reprobados = 0, sumaPromedios = 0;
+
+      const bodyData = calificaciones.map((calif, idx) => {
+        const p1 = calif?.parcial_1 ?? '-'; const p2 = calif?.parcial_2 ?? '-'; const p3 = calif?.parcial_3 ?? '-'; const p4 = calif?.parcial_4 ?? '-'; const prom = calif?.promedio ?? '-'; const est = calif?.estado ?? 'SIN CALIFICAR';
+        if (est === 'APROBADO') aprobados++; if (est === 'REPROBADO') reprobados++; if (prom !== '-') sumaPromedios += parseFloat(prom);
+        return [idx + 1, calif.nombre_completo, p1, p2, p3, p4, prom, est];
+      });
+
+      doc.autoTable({
+        startY: 70, head: [['#', 'Nombre Completo', 'P1', 'P2', 'P3', 'P4', 'Promedio', 'Estado']], body: bodyData, theme: 'grid', headStyles: { fillColor: COLOR_AZUL_TECNM, textColor: 255 }, styles: { fontSize: 9, cellPadding: 2, halign: 'center' }, columnStyles: { 1: { halign: 'left' } },
+        didParseCell: function(data) {
+           if (data.section === 'body' && data.column.index === 7) {
+             if (data.cell.raw === 'APROBADO') data.cell.styles.textColor = [0, 128, 0];
+             if (data.cell.raw === 'REPROBADO') data.cell.styles.textColor = [255, 0, 0];
+           }
+        }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 15;
+      doc.setFont('helvetica', 'bold'); doc.text("Estadísticas del Grupo:", 14, finalY);
+      doc.setFont('helvetica', 'normal');
+      const idxAprob = calificaciones.length > 0 ? ((aprobados / calificaciones.length) * 100).toFixed(1) : 0;
+      const idxReprob = calificaciones.length > 0 ? ((reprobados / calificaciones.length) * 100).toFixed(1) : 0;
+      const promGen = calificaciones.length > 0 ? (sumaPromedios / calificaciones.length).toFixed(2) : 0;
+
+      doc.text(`Total de alumnos: ${calificaciones.length}`, 14, finalY + 8); doc.text(`Aprobados: ${aprobados} (${idxAprob}%)`, 14, finalY + 14); doc.text(`Reprobados: ${reprobados} (${idxReprob}%)`, 14, finalY + 20);
+      doc.setFont('helvetica', 'bold'); doc.text(`Promedio General: ${promGen}`, 120, finalY + 14);
+
+      doc.save(`Boleta_${grupo.grupo_nombre.replace(/\s+/g, '_')}.pdf`); showToast('Boleta PDF descargada correctamente');
+    }
+
   </script>
  </body>
 </html>
